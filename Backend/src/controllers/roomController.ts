@@ -1,0 +1,215 @@
+import type { Request, Response } from 'express';
+import type { GameState, Player, GameResponse } from '../types/game.js';
+import { broadcastGameUpdate } from '../config/pusher.js';
+import GameModel from '../models/Game.js';
+
+/**
+ * HIGH-PERFORMANCE HYBRID ARCHITECTURE:
+ * We use an in-memory cache for Sub-Millisecond Speed (Elite Experience)
+ * and MongoDB for Extreme Reliability (Vercel/Stable Experience).
+ */
+const gameCache: Record<string, GameState> = {};
+
+/**
+ * Generates a random numeric 6-digit code.
+ */
+const generateNumericCode = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+/**
+ * Creates a unique game room in DB & Cache.
+ */
+export const createRoom = async (req: Request, res: Response<GameResponse>) => {
+  const { playerName } = req.body;
+  const roomId = generateNumericCode();
+  
+  const initialState: any = {
+    roomId,
+    board: Array(9).fill(null),
+    firstMove: 'X', 
+    currentTurn: 'X',
+    status: 'WAITING',
+    winner: null,
+    winningLine: null,
+    scores: { X: 0, O: 0, DRAW: 0 },
+    players: {
+      X: playerName || "Player 1",
+      O: undefined
+    }
+  };
+
+  try {
+      const gameDB = await GameModel.create(initialState);
+      const game = gameDB.toObject() as GameState;
+      gameCache[roomId] = game;
+
+      res.json({
+        success: true,
+        message: `Room created: ${roomId}`,
+        game
+      });
+  } catch (err) {
+      console.error("Room formation failed:", err);
+      res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * Allows a player to join an existing room with Auto-Recsync.
+ */
+export const joinRoom = async (req: Request, res: Response<GameResponse>) => {
+  const roomId = req.params.roomId as string;
+  const { playerName } = req.body;
+  let game = gameCache[roomId];
+
+  try {
+      if (!game) {
+          const dbDoc = await GameModel.findOne({ roomId });
+          if (dbDoc) {
+              game = dbDoc.toObject() as GameState;
+              gameCache[roomId] = game;
+          }
+      }
+
+      if (!game) {
+        return res.status(404).json({ success: false, message: "Room not found" });
+      }
+
+      if (game.players.X && game.players.O) {
+        return res.status(400).json({ success: false, message: "Room is full" });
+      }
+
+      const assignedPlayer: Player = game.players.X ? 'O' : 'X';
+      game.players[assignedPlayer] = playerName || `Player ${assignedPlayer === 'X' ? '1' : '2'}`;
+
+      if (game.players.X && game.players.O) {
+          game.status = 'PLAYING';
+      }
+
+      await GameModel.findOneAndUpdate({ roomId }, game);
+      gameCache[roomId] = game;
+
+      broadcastGameUpdate(roomId, game);
+ 
+      res.json({ success: true, message: "Joined successfully", game, assignedSide: assignedPlayer });
+  } catch (err) {
+      res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * Fetches the current state of a room with Cache Hit logic.
+ */
+export const getRoomStatus = async (req: Request, res: Response<GameResponse>) => {
+  const roomId = req.params.roomId as string;
+  let game = gameCache[roomId];
+
+  if (!game) {
+    const dbDoc = await GameModel.findOne({ roomId });
+    if (dbDoc) {
+        game = dbDoc.toObject() as GameState;
+        gameCache[roomId] = game;
+    }
+  }
+
+  if (!game) {
+      return res.status(404).json({ success: false, message: "Room not found" });
+  }
+
+  res.json({ success: true, game });
+};
+
+/**
+ * Resets the room state for a rematch with persistent scoring.
+ */
+export const rematch = async (req: Request, res: Response<GameResponse>) => {
+  const roomId = req.params.roomId as string;
+  let game = gameCache[roomId];
+
+  if (!game) {
+    const dbDoc = await GameModel.findOne({ roomId });
+    if (dbDoc) {
+        game = dbDoc.toObject() as GameState;
+        gameCache[roomId] = game;
+    }
+  }
+
+  if (!game) {
+    return res.status(404).json({ success: false, message: "Room not found" });
+  }
+
+  const nextToStart: Player = game.firstMove === 'X' ? 'O' : 'X';
+  game.board = Array(9).fill(null);
+  game.status = 'PLAYING';
+  game.winner = null;
+  game.winningLine = null;
+  game.firstMove = nextToStart;
+  game.currentTurn = nextToStart; 
+
+  await GameModel.findOneAndUpdate({ roomId }, game);
+  gameCache[roomId] = game;
+  broadcastGameUpdate(roomId, game);
+
+  res.json({ success: true, game });
+};
+
+/**
+ * Safe player departure with DB Sync.
+ */
+export const leaveRoom = async (req: Request, res: Response<GameResponse>) => {
+  const roomId = req.params.roomId as string;
+  const { player } = req.body;
+  
+  let game = gameCache[roomId];
+  if (!game) {
+      const dbDoc = await GameModel.findOne({ roomId });
+      if (dbDoc) {
+          game = dbDoc.toObject() as GameState;
+          gameCache[roomId] = game;
+      }
+  }
+
+  if (!game) {
+    return res.status(404).json({ success: false, message: "Room not found" });
+  }
+
+  if (player === 'X') game.players.X = undefined;
+  if (player === 'O') game.players.O = undefined;
+
+  if (!game.players.X && !game.players.O) {
+      delete gameCache[roomId];
+      await GameModel.deleteOne({ roomId });
+      console.log(`🗑️ DB Clean: ${roomId}`);
+  } else {
+      game.status = 'WAITING';
+      game.board = Array(9).fill(null);
+      game.winner = null;
+      game.winningLine = null;
+      
+      await GameModel.findOneAndUpdate({ roomId }, game);
+      gameCache[roomId] = game;
+      broadcastGameUpdate(roomId, game);
+  }
+
+  res.json({ success: true, message: "Left room successfully" });
+};
+
+// Internal utility to keep Game Actions fast
+export const getGameStateFromCache = async (roomId: string) => {
+    let game = gameCache[roomId];
+    if (!game) {
+        const dbDoc = await GameModel.findOne({ roomId });
+        if (dbDoc) {
+            game = dbDoc.toObject() as GameState;
+            gameCache[roomId] = game;
+        }
+    }
+    return game;
+};
+
+export const updateGameStateSync = async (roomId: string, newState: GameState) => {
+    gameCache[roomId] = newState;
+    await GameModel.findOneAndUpdate({ roomId }, newState);
+    broadcastGameUpdate(roomId, newState);
+};

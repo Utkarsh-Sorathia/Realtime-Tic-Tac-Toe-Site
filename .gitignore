@@ -1,0 +1,35 @@
+# 🛠️ Dependencies
+node_modules/
+.npm
+npm-debug.log*
+
+# 🔑 Secrets & Env
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 📦 Build Output
+dist/
+build/
+.vercel
+out/
+.next/
+
+# 🧪 Testing
+coverage/
+
+# 💻 IDE & OS
+.DS_Store
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 🧹 Misc
+tmp/
+*.log
