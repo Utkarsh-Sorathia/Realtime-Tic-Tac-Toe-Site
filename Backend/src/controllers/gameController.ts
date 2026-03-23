@@ -32,56 +32,61 @@ const checkWinner = (board: (Player | null)[]) => {
  * Handles a player's move with Persistent Async Logic.
  */
 export const makeMove = async (req: Request, res: Response<GameResponse>) => {
-  const roomId = req.params.roomId as string;
-  const { index, player } = req.body;
-  
-  // 🔄 Fetch from Cache/DB
-  const game = await getGameStateFromCache(roomId);
+  try {
+    const roomId = req.params.roomId as string;
+    const { index, player } = req.body;
+    
+    // 🔄 Fetch from Cache/DB
+    const game = await getGameStateFromCache(roomId);
 
-  if (!game) {
-    return res.status(404).json({ success: false, message: "Game not found" });
-  }
+    if (!game) {
+      return res.status(404).json({ success: false, message: "Game not found" });
+    }
 
-  if (game.status !== 'PLAYING') {
-    return res.status(400).json({ success: false, message: "Game is not active" });
-  }
+    if (game.status !== 'PLAYING') {
+      return res.status(400).json({ success: false, message: "Game is not active" });
+    }
 
-  if (game.currentTurn !== player) {
-    return res.status(400).json({ success: false, message: "It's not your turn!" });
-  }
+    if (game.currentTurn !== player) {
+      return res.status(400).json({ success: false, message: "It's not your turn!" });
+    }
 
-  if (game.board[index] !== null) {
-    return res.status(400).json({ success: false, message: "Cell already occupied" });
-  }
+    if (game.board[index] !== null) {
+      return res.status(400).json({ success: false, message: "Cell already occupied" });
+    }
 
-  // Record the move
-  game.board[index] = player;
-  
-  const result = checkWinner(game.board);
-  
-  if (result) {
-      if (result.winner === 'DRAW') {
-        game.status = 'DRAW';
-        game.scores.DRAW++; // Record the stalemate
-      } else {
-        game.status = 'WON';
-        game.winner = result.winner;
-        game.winningLine = result.line;
-        // 📈 PROMOTION: Increment the winner's score
-        if (result.winner === 'X' || result.winner === 'O') {
-            game.scores[result.winner]++;
+    // Record the move
+    game.board[index] = player;
+    
+    const result = checkWinner(game.board);
+    
+    if (result) {
+        if (result.winner === 'DRAW') {
+          game.status = 'DRAW';
+          game.scores.DRAW++; // Record the stalemate
+        } else {
+          game.status = 'WON';
+          game.winner = result.winner;
+          game.winningLine = result.line;
+          // 📈 PROMOTION: Increment the winner's score
+          if (result.winner === 'X' || result.winner === 'O') {
+              game.scores[result.winner]++;
+          }
         }
-      }
-  } else {
-    game.currentTurn = game.currentTurn === 'X' ? 'O' : 'X';
+    } else {
+      game.currentTurn = game.currentTurn === 'X' ? 'O' : 'X';
+    }
+
+    // 💾 Update Both Cache & DB
+    await updateGameStateSync(roomId, game);
+
+    res.json({
+      success: true,
+      message: result ? (result.winner === 'DRAW' ? "It's a draw!" : `Player ${result.winner} won!`) : "Move accepted",
+      game
+    });
+  } catch (error) {
+    console.error(`Move Error for ${req.params?.roomId}:`, error);
+    res.status(500).json({ success: false, message: "Failed to process move" });
   }
-
-  // 💾 Update Both Cache & DB
-  await updateGameStateSync(roomId, game);
-
-  res.json({
-    success: true,
-    message: result ? (result.winner === 'DRAW' ? "It's a draw!" : `Player ${result.winner} won!`) : "Move accepted",
-    game
-  });
 };
