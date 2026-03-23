@@ -74,14 +74,32 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setGameState(updatedGame);
       });
 
+      // Strategy 1: Immediate fetch
       refreshRoom();
 
+      // Strategy 2: Delayed fetch to catch any handshake missed events
+      const timeoutId = setTimeout(() => {
+        console.log('🔄 Delayed handshake sync...');
+        refreshRoom();
+      }, 1500);
+
+      // Strategy 3: Setup polling when waiting for player to join
+      let intervalId: ReturnType<typeof setInterval> | undefined;
+      if (gameState?.status === 'WAITING') {
+        intervalId = setInterval(() => {
+          console.log('🔄 Polling sync check...');
+          refreshRoom();
+        }, 4000);
+      }
+
       return () => {
+        clearTimeout(timeoutId);
+        if (intervalId) clearInterval(intervalId);
         console.log(`🔌 Unsubscribing from game-${roomId}`);
         unsubscribe();
       };
     }
-  }, [roomId]);
+  }, [roomId, gameState?.status]);
 
   const createGame = async () => {
     setIsSearching(true);
