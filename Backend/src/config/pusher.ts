@@ -15,6 +15,10 @@ export const pusher = new Pusher({
 });
 
 // Helper for broadcasting game events
-export const broadcastGameUpdate = (roomId: string, data: any) => {
-  pusher.trigger(`game-${roomId}`, 'game-updated', data);
+export const broadcastGameUpdate = async (roomId: string, data: any) => {
+  try {
+    await pusher.trigger(`game-${roomId}`, 'game-updated', data);
+  } catch (error) {
+    console.error(`❌ Pusher Error on game-${roomId}:`, error);
+  }
 };

@@ -93,7 +93,7 @@ export const joinRoom = async (req: Request, res: Response<GameResponse>) => {
       await GameModel.findOneAndUpdate({ roomId }, game);
       gameCache[roomId] = game;
 
-      broadcastGameUpdate(roomId, game);
+      await broadcastGameUpdate(roomId, game);
  
       res.json({ success: true, message: "Joined successfully", game, assignedSide: assignedPlayer });
   } catch (err) {
@@ -161,7 +161,7 @@ export const rematch = async (req: Request, res: Response<GameResponse>) => {
 
     await GameModel.findOneAndUpdate({ roomId }, game);
     gameCache[roomId] = game;
-    broadcastGameUpdate(roomId, game);
+    await broadcastGameUpdate(roomId, game);
 
     res.json({ success: true, game });
   } catch (error) {
@@ -207,7 +207,7 @@ export const leaveRoom = async (req: Request, res: Response<GameResponse>) => {
         
         await GameModel.findOneAndUpdate({ roomId }, game);
         gameCache[roomId] = game;
-        broadcastGameUpdate(roomId, game);
+        await broadcastGameUpdate(roomId, game);
     }
 
     res.json({ success: true, message: "Left room successfully" });
@@ -235,5 +235,5 @@ export const updateGameStateSync = async (roomId: string, newState: GameState) =
     await connectDB();
     gameCache[roomId] = newState;
     await GameModel.findOneAndUpdate({ roomId }, newState);
-    broadcastGameUpdate(roomId, newState);
+    await broadcastGameUpdate(roomId, newState);
 };
