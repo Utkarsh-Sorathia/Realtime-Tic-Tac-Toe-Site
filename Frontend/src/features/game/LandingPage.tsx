@@ -86,14 +86,16 @@ const LandingPage: React.FC = () => {
                     
                     {/* Display Name Field */}
                     <div className="flex flex-col gap-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-slate-500 px-1">Your Identity</label>
+                        <label htmlFor="playerName" className="text-xs font-bold uppercase tracking-widest text-slate-500 px-1">Your Identity</label>
                         <div className="relative group">
                             <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-cyan-400 transition-colors" size={20} />
                             <input 
+                                id="playerName"
                                 type="text" 
                                 placeholder="Enter Display Name..." 
                                 value={playerName}
                                 onChange={(e) => setPlayerName(e.target.value)}
+                                aria-label="Enter your display name"
                                 className="w-full bg-white/5 border border-white/10 focus:border-cyan-500/50 outline-none rounded-2xl px-12 py-4 text-white placeholder:text-slate-700 transition-all font-bold"
                             />
                         </div>
@@ -103,9 +105,11 @@ const LandingPage: React.FC = () => {
 
                     {/* Create Room Action */}
                     <motion.button
+                        id="createRoomBtn"
                         disabled={isSearching}
                         whileTap={{ scale: 0.98 }}
                         onClick={handleCreateRoom}
+                        aria-label="Create a new private game room"
                         className="group flex items-center justify-between px-6 py-5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-2xl transition-all"
                     >
                         <div className="flex flex-col items-start gap-1">
@@ -126,17 +130,21 @@ const LandingPage: React.FC = () => {
                         <div className="relative group">
                             <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={20} />
                             <input 
+                                id="roomCodeInput"
                                 type="text" 
                                 placeholder="Enter Room Code..." 
                                 value={roomIdInput}
                                 onChange={(e) => setRoomIdInput(e.target.value.toUpperCase())}
+                                aria-label="Enter unique 6-digit room code to join"
                                 className="w-full bg-white/5 border border-white/10 focus:border-cyan-500/50 outline-none rounded-2xl px-12 py-4 text-white placeholder:text-slate-600 transition-all font-mono"
                             />
                         </div>
                         <motion.button
+                            id="joinRoomBtn"
                             disabled={!roomIdInput || isSearching}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleJoinRoom}
+                            aria-label="Join an existing game room with code"
                             className={`flex items-center justify-center gap-2 w-full py-4 rounded-2xl font-black transition-all shadow-lg ${
                                 !roomIdInput ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50' : 'bg-white text-slate-900 hover:bg-slate-100 shadow-white/10'
                             }`}

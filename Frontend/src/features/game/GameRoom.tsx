@@ -108,24 +108,37 @@ const GameRoom: React.FC = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 className="z-10 w-full max-w-lg"
             >
-                {/* Header: Room Code & Play Side */}
-                <div className="flex items-center justify-between mb-6 px-2">
-                    <div className="flex flex-col">
-                        <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-1">Combat Zone</h2>
+                {/* Header: Combat Zone Namespace & Session Details */}
+                <div className="w-full mb-10 px-2">
+                    <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                            <span className="text-2xl font-mono font-black text-white uppercase tracking-tighter">{roomId}</span>
-                            <button 
-                                onClick={handleShare}
-                                className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full transition-all group active:scale-95"
-                            >
-                                {isCopied ? <Check size={14} className="text-green-500" /> : <Share2 size={14} className="text-slate-400 group-hover:text-cyan-400" />}
-                                <span className="text-[10px] font-bold text-slate-400 group-hover:text-white uppercase tracking-widest">{isCopied ? 'Copied' : 'Invite'}</span>
-                            </button>
+                            <div className="w-1.5 h-6 bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.6)]" />
+                            <h2 className="text-xl font-black uppercase tracking-[0.2em] text-white italic">
+                                Combat <span className="text-cyan-400">Zone</span>
+                            </h2>
+                        </div>
+                        <div className={`px-4 py-1.5 rounded-full font-black text-[10px] border transition-all tracking-[0.2em] uppercase shrink-0 ${
+                            playerSide === 'X' 
+                                ? 'bg-cyan-500/10 border-cyan-400/30 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.1)]' 
+                                : 'bg-pink-500/10 border-pink-500/30 text-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.1)]'
+                        }`}>
+                           TEAM {playerSide}
                         </div>
                     </div>
 
-                    <div className={`px-5 py-2 rounded-full font-black text-xs border-2 transition-all tracking-widest ${playerSide === 'X' ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.15)]' : 'bg-pink-500/10 border-pink-500/30 text-pink-500 shadow-[0_0_20px_rgba(236,72,153,0.15)]'}`}>
-                       PLAYING AS {playerSide}
+                    <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-xl shadow-2xl">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-500 mb-1">Lobby Entry</span>
+                            <span className="text-4xl font-mono font-black text-white tracking-tighter leading-none">{roomId}</span>
+                        </div>
+                        <button 
+                            onClick={handleShare}
+                            aria-label={isCopied ? "Invite link copied" : "Share invite link"}
+                            className="flex items-center gap-3 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-400/30 px-6 py-3 rounded-xl transition-all group active:scale-95"
+                        >
+                            {isCopied ? <Check size={18} className="text-green-400" /> : <Share2 size={18} className="text-cyan-400 group-hover:scale-110 transition-transform" />}
+                            <span className="text-[11px] font-black text-cyan-400 uppercase tracking-widest leading-none">{isCopied ? 'Copied' : 'Invite'}</span>
+                        </button>
                     </div>
                 </div>
 
@@ -169,6 +182,7 @@ const GameRoom: React.FC = () => {
                         <motion.button
                             key={idx}
                             onClick={() => handleCellClick(idx)}
+                            aria-label={`Mark square ${idx + 1}${cell ? ` as ${cell}` : ''}`}
                             whileHover={!cell && canMove ? { scale: 1.05, background: "rgba(255,255,255,0.08)" } : {}}
                             whileTap={!cell && canMove ? { scale: 0.95 } : {}}
                             className={`aspect-square rounded-4xl border-2 border-white/5 bg-white/5 flex items-center justify-center text-6xl font-black transition-all relative overflow-hidden ${
@@ -220,11 +234,11 @@ const GameRoom: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <button title="Refresh" onClick={handleRefresh} className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-slate-500 hover:text-white transition-all active:scale-90">
+                        <button title="Refresh" onClick={handleRefresh} aria-label="Refresh game state" className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-slate-500 hover:text-white transition-all active:scale-90">
                             <RefreshCw className={isActionLoading ? "animate-spin" : ""} size={20} />
                         </button>
                         
-                        <button title="Leave" onClick={leaveRoom} className="p-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-2xl text-red-500 transition-all active:scale-90">
+                        <button title="Leave" onClick={leaveRoom} aria-label="Leave this room" className="p-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-2xl text-red-500 transition-all active:scale-90">
                             <LogOut size={20} />
                         </button>
                     </div>

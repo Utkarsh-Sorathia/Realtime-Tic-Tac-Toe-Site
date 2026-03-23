@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://tictactoe-elite.vercel.app/sitemap.xml
