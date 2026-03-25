@@ -64,7 +64,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   /**
-   * 📡 REAL-TIME SYNC: Setup Pusher whenever roomId changes.
+   * 📡 REAL-TIME SYNC: Setup Pusher exactly once whenever roomId changes.
    */
   useEffect(() => {
     if (roomId) {
@@ -74,32 +74,24 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setGameState(updatedGame);
       });
 
-      // Strategy 1: Immediate fetch
+      // Fetch immediate baseline state
       refreshRoom();
 
-      // Strategy 2: Delayed fetch to catch any handshake missed events
+      // Delayed fetch to ensure no web-socket handshake events were missed
       const timeoutId = setTimeout(() => {
         console.log('🔄 Delayed handshake sync...');
         refreshRoom();
       }, 1500);
 
-      // Strategy 3: Setup polling when waiting for player to join
-      let intervalId: ReturnType<typeof setInterval> | undefined;
-      if (gameState?.status === 'WAITING') {
-        intervalId = setInterval(() => {
-          console.log('🔄 Polling sync check...');
-          refreshRoom();
-        }, 4000);
-      }
+      // (Note: Removed continuous interval polling to trust Pusher strictly)
 
       return () => {
         clearTimeout(timeoutId);
-        if (intervalId) clearInterval(intervalId);
         console.log(`🔌 Unsubscribing from game-${roomId}`);
         unsubscribe();
       };
     }
-  }, [roomId, gameState?.status]);
+  }, [roomId]);
 
   const createGame = async () => {
     setIsSearching(true);

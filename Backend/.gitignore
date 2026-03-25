@@ -1,0 +1,7 @@
+# 🛠️ TypeScript Compiled Output
+/**/*.js
+/**/*.js.map
+/**/*.d.ts
+/**/*.d.ts.map
+node_modules/
+.env
