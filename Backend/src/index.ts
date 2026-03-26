@@ -5,6 +5,11 @@ import morgan from 'morgan';
 import mongoose from 'mongoose';
 import roomRoutes from './routes/roomRoutes.js';
 import pusherRoutes from './routes/pusherRoutes.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -19,17 +24,36 @@ mongoose.connect(mongoUri)
 
 // Standard middleware for secure and efficient cross-origin requests
 app.use(morgan('dev'));
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173', 
+    'https://tictactoe-elite.vercel.app'
+  ],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false })); // Required for Pusher auth form-encoded payload
+
+// View Engine Setup
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
 
 // API Routes initialization
 app.use('/api/room', roomRoutes);
 app.use('/api/pusher', pusherRoutes);
 
-// Health check endpoint
+// Health check & Showcase endpoint
 app.get('/', (req, res) => {
-  res.send('🎮 Real-time Tic Tac Toe API is Online! (MongoDB Active) 🚀');
+    const uptimeInSeconds = process.uptime();
+    const hours = Math.floor(uptimeInSeconds / 3600);
+    const minutes = Math.floor((uptimeInSeconds % 3600) / 60);
+    const seconds = Math.floor(uptimeInSeconds % 60);
+    
+    res.render('index', { 
+        status: 'Systems Online', 
+        version: '1.0.0',
+        uptime: `${hours}h ${minutes}m ${seconds}s` 
+    });
 });
 
 // Error handling middleware
