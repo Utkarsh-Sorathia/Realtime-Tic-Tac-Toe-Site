@@ -80,7 +80,7 @@ const GameRoom: React.FC = () => {
     };
 
     const handleShare = async () => {
-        const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+        const inviteUrl = `${window.location.origin}/room/${roomId}`;
         
         if (navigator.share) {
             try {
@@ -193,7 +193,7 @@ const GameRoom: React.FC = () => {
                         <Trophy className="w-5 h-5 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)] shrink-0" />
                         <div>
                             <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-yellow-400">🏆 You Win by Forfeit!</p>
-                            <p className="text-[9px] text-yellow-400/60 font-medium">Opponent failed to reconnect in time</p>
+                            <p className="text-[9px] text-yellow-400/60 font-medium">Opponent left the game.</p>
                         </div>
                     </motion.div>
                 )}

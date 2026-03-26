@@ -177,7 +177,7 @@ export const leaveRoom = async (req: Request, res: Response<GameResponse>) => {
   try {
     await connectDB();
     const roomId = req.params.roomId as string;
-    const { player } = req.body;
+    const { player, isForfeit } = req.body;
     
     let game = gameCache[roomId];
     if (!game) {
@@ -200,8 +200,8 @@ export const leaveRoom = async (req: Request, res: Response<GameResponse>) => {
         await GameModel.deleteOne({ roomId });
         console.log(`🗑️ DB Clean: ${roomId}`);
     } else {
-        // If the game was active, the remaining player gets a forfeit win
-        if (game.status === 'PLAYING') {
+        // Only award a point if this was a forfeit (e.g. grace period expired)
+        if (game.status === 'PLAYING' && isForfeit) {
             const remainingPlayer = game.players.X ? 'X' : 'O';
             game.scores[remainingPlayer]++;
             console.log(`🏆 Forfeit win awarded to ${remainingPlayer} in room ${roomId}`);

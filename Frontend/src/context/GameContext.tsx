@@ -42,6 +42,12 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
   const [opponentForfeit, setOpponentForfeit] = useState(false);
   const evictionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gameStateRef = useRef<GameState | null>(null);
+
+  // Sync ref with state for use in Pusher closures
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
 
   /**
    * 🔄 ON MOUNT: Check for an existing session in local storage.
@@ -85,33 +91,47 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setGameState(updatedGame);
         },
         () => {
-          // 👻 Opponent's socket dropped — start 10s grace period
-          console.log('👻 Opponent disconnected. Grace period started (10s)...');
-          setOpponentDisconnected(true);
+          // 👻 Opponent's socket dropped — start grace period check
+          console.log('👻 Socket dropped. Checking if this is a natural exit or a crash...');
 
-          // Clear any existing timer before starting a new one
-          if (evictionTimerRef.current) clearTimeout(evictionTimerRef.current);
-
-          evictionTimerRef.current = setTimeout(async () => {
-            // Grace period expired — opponent truly left. Show forfeit win!
-            console.log('⏰ Grace period expired. Awarding forfeit win...');
-            const opponentSide: Player = playerSide === 'X' ? 'O' : 'X';
-
-            // 🏆 Show victory moment first
-            setOpponentForfeit(true);
-
-            // After 3.5s, evict opponent + clean up
-            setTimeout(async () => {
-              try {
-                await roomService.leaveRoom(roomId, opponentSide);
-                console.log('✅ Opponent evicted from room after forfeit.');
-              } catch (err) {
-                refreshRoom();
+          // We wait 1000ms to allow the server's "WAITING" broadcast to resolve first.
+          // This prevents the 10s grace timer from appearing when someone clicks 'Leave Room'.
+          setTimeout(() => {
+              const opponentSide: Player = playerSide === 'X' ? 'O' : 'X';
+              const latestPlayers = gameStateRef.current?.players;
+              
+              if (latestPlayers && !latestPlayers[opponentSide]) {
+                  console.log('✅ Natural opponent exit confirmed. Ignoring socket drop.');
+                  return;
               }
-              setOpponentDisconnected(false);
-              setOpponentForfeit(false);
-            }, 3500);
-          }, 10000); // 10-second grace period
+
+              console.log('🚨 Unscheduled disconnect detected. Starting 10s grace period...');
+              setOpponentDisconnected(true);
+
+              // Clear any existing timer before starting a new one
+              if (evictionTimerRef.current) clearTimeout(evictionTimerRef.current);
+
+              evictionTimerRef.current = setTimeout(async () => {
+                // Grace period expired — opponent truly left. Show forfeit win!
+                console.log('⏰ Grace period expired. Awarding forfeit win...');
+                const currentOpponentSide: Player = playerSide === 'X' ? 'O' : 'X';
+
+                // 🏆 Show victory moment first
+                setOpponentForfeit(true);
+
+                // After 3.5s, evict opponent + clean up (isForfeit=true awards the point)
+                setTimeout(async () => {
+                  try {
+                    await roomService.leaveRoom(roomId, currentOpponentSide, true); // ← isForfeit=true
+                    console.log('✅ Opponent evicted from room after forfeit.');
+                  } catch (err) {
+                    refreshRoom();
+                  }
+                  setOpponentDisconnected(false);
+                  setOpponentForfeit(false);
+                }, 3500);
+              }, 10000); // 10-second grace period
+          }, 1000);
         },
         () => {
           // ✅ Opponent reconnected within grace period — cancel eviction

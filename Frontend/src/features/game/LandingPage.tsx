@@ -2,32 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Gamepad2, Users, ArrowRight, Loader2, User, Cpu } from 'lucide-react';
 import { useGame } from '../../context/GameContext';
+import { useSearchParams } from 'react-router-dom';
 
 interface LandingPageProps {
     onPlayVSComputer?: () => void;
 }
 
-/**
- * High-tier landing page for the Tic Tac Toe application.
- * Focused on premium aesthetics and hooks into the global game state.
- */
 const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
     const { createGame, joinGame, isSearching, playerName, setPlayerName } = useGame();
     const [roomIdInput, setRoomIdInput] = useState('');
     const [status, setStatus] = useState<string | null>(null);
+    const [searchParams, setSearchParams] = useSearchParams();
 
-    /**
-     * 🔗 AUTO-DETECT INVITE LINK:
-     * If the user arrived via a link like ?room=123456, pre-fill it.
-     */
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const inviteRoom = params.get('room');
+        const inviteRoom = searchParams.get('room');
         if (inviteRoom) {
             setRoomIdInput(inviteRoom);
             setStatus(`Invite detected for room ${inviteRoom}! 🔗`);
         }
-    }, []);
+    }, [searchParams]);
 
     const handleCreateRoom = async () => {
         if (!playerName) {
@@ -52,6 +45,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
         if (!roomIdInput) return;
         setStatus(`Joining room ${roomIdInput}...`);
         try {
+            // Once we start the join attempt, clear the invite link from URL
+            if (searchParams.has('room')) {
+                setSearchParams({}, { replace: true });
+            }
+            
             await joinGame(roomIdInput);
             setStatus('Joined Successfully! Preparing the board...');
         } catch (err) {
@@ -90,7 +88,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
                     
                     {/* Display Name Field */}
                     <div className="flex flex-col gap-1 md:gap-2">
-                        <label htmlFor="playerName" className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-500 px-1">Your Identity</label>
+                        <label htmlFor="playerName" className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-500 px-1">
+                            {roomIdInput ? 'Join the Arena As' : 'Your Identity'}
+                        </label>
                         <div className="relative group">
                             <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-cyan-400 transition-colors w-4 h-4 md:w-5 md:h-5" />
                             <input 
@@ -99,6 +99,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
                                 placeholder="Enter Display Name..." 
                                 value={playerName}
                                 onChange={(e) => setPlayerName(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && roomIdInput && handleJoinRoom()}
                                 aria-label="Enter your display name"
                                 className="w-full bg-white/5 border border-white/10 focus:border-cyan-500/50 outline-none rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-4 py-3 md:py-4 text-white placeholder:text-slate-700 transition-all font-bold text-sm md:text-base"
                             />

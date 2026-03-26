@@ -34,8 +34,8 @@ export const roomService = {
     return response.data;
   },
 
-  leaveRoom: async (roomId: string, player: 'X' | 'O') => {
-    const response = await api.post(`/room/${roomId}/leave`, { player });
+  leaveRoom: async (roomId: string, player: 'X' | 'O', isForfeit = false) => {
+    const response = await api.post(`/room/${roomId}/leave`, { player, isForfeit });
     return response.data;
   }
 };
