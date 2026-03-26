@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { checkWinner, isBoardFull, getBestMove } from '../features/game/utils/aiLogic';
+import { isBoardFull, getBestMove, checkWinDetails } from '../features/game/utils/aiLogic';
 import type { Player, BoardState, Difficulty } from '../features/game/utils/aiLogic';
 
 export type GameStatus = 'PLAYING' | 'WON' | 'DRAW';
@@ -9,6 +9,7 @@ interface UseGamePvEReturn {
     currentTurn: Player;
     status: GameStatus;
     winner: Player | null;
+    winningLine: number[] | null;
     difficulty: Difficulty;
     setDifficulty: (diff: Difficulty) => void;
     makeMove: (index: number) => void;
@@ -35,6 +36,10 @@ export function useGamePvE(humanPlayerSide: Player = 'X'): UseGamePvEReturn {
     const [winner, setWinner] = useState<Player | null>(() => 
         (sessionStorage.getItem('pve_winner') as Player) || null
     );
+    const [winningLine, setWinningLine] = useState<number[] | null>(() => {
+        const saved = sessionStorage.getItem('pve_winningLine');
+        return saved ? JSON.parse(saved) : null;
+    });
     const [difficulty, setDifficulty] = useState<Difficulty>(() => 
         (sessionStorage.getItem('pve_difficulty') as Difficulty) || 'HARD'
     );
@@ -49,8 +54,10 @@ export function useGamePvE(humanPlayerSide: Player = 'X'): UseGamePvEReturn {
         sessionStorage.setItem('pve_status', status);
         if (winner) sessionStorage.setItem('pve_winner', winner);
         else sessionStorage.removeItem('pve_winner');
+        if (winningLine) sessionStorage.setItem('pve_winningLine', JSON.stringify(winningLine));
+        else sessionStorage.removeItem('pve_winningLine');
         sessionStorage.setItem('pve_difficulty', difficulty);
-    }, [board, currentTurn, status, winner, difficulty]);
+    }, [board, currentTurn, status, winner, winningLine, difficulty]);
 
     // Core logic to process a move and check for win/draw immediately
     const processMove = useCallback((index: number, player: Player) => {
@@ -64,15 +71,18 @@ export function useGamePvE(humanPlayerSide: Player = 'X'): UseGamePvEReturn {
 
     // Effect to observe board changes and determine terminal states
     useEffect(() => {
-        const currentWinner = checkWinner(board);
+        const { winner: currentWinner, line } = checkWinDetails(board);
         if (currentWinner) {
             setWinner(currentWinner);
+            setWinningLine(line);
             setStatus('WON');
+            if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
             return;
         }
         
         if (isBoardFull(board)) {
             setStatus('DRAW');
+            if (navigator.vibrate) navigator.vibrate(50);
             return;
         }
 
@@ -107,6 +117,7 @@ export function useGamePvE(humanPlayerSide: Player = 'X'): UseGamePvEReturn {
         setCurrentTurn('X');
         setStatus('PLAYING');
         setWinner(null);
+        setWinningLine(null);
         setIsAiThinking(false);
     };
 
@@ -115,6 +126,7 @@ export function useGamePvE(humanPlayerSide: Player = 'X'): UseGamePvEReturn {
         currentTurn,
         status,
         winner,
+        winningLine,
         difficulty,
         setDifficulty,
         makeMove,

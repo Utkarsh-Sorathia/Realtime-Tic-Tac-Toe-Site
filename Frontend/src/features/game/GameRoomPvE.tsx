@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, RefreshCw, LogOut, Play } from 'lucide-react';
+import { Trophy, RefreshCw, LogOut, Play, ChevronLeft } from 'lucide-react';
 import { useGamePvE } from '../../hooks/useGamePvE';
+import confetti from 'canvas-confetti';
 import type { Difficulty } from './utils/aiLogic';
 
 interface GameRoomPvEProps {
@@ -16,12 +17,25 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
         currentTurn, 
         status, 
         winner, 
+        winningLine,
         difficulty, 
         setDifficulty, 
         makeMove, 
         resetGame, 
         isAiThinking 
     } = useGamePvE(humanSide);
+
+    // Confetti effect on victory
+    React.useEffect(() => {
+        if (status === 'WON' && winner === 'X') {
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#22d3ee', '#ffffff', '#a855f7']
+            });
+        }
+    }, [status, winner]);
 
     const [scores, setScores] = useState<Record<Difficulty, { X: number; O: number; DRAW: number; }>>(() => {
         const savedScores = sessionStorage.getItem('pve_scores_v2');
@@ -68,17 +82,26 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
     const canMove = currentTurn === humanSide && status === 'PLAYING' && !isAiThinking;
 
     const renderWinningLine = () => {
-        // Simple straight horizontal/vertical visualization placeholder
-        if (status !== 'WON') return null;
-        
-        // This is simplified for PvE, ideally we'd extract the exact winning line logic from PvP
-        // but since AI logic just returns the winner string, we'll show a "pulse" overlay instead of a line
+        if (status !== 'WON' || !winningLine) return null;
+        const line = winningLine.join(',');
+        let style = "";
+        if (line === '0,1,2') style = "top-[18.2%] w-[90%] left-[5%] h-[2px]";
+        if (line === '3,4,5') style = "top-[50%] w-[90%] left-[5%] h-[2px] -translate-y-1/2";
+        if (line === '6,7,8') style = "bottom-[18.2%] w-[90%] left-[5%] h-[2px]";
+        if (line === '0,3,6') style = "left-[18.2%] h-[90%] top-[5%] w-[2px]";
+        if (line === '1,4,7') style = "left-[50%] h-[90%] top-[5%] w-[2px] -translate-x-1/2";
+        if (line === '2,5,8') style = "right-[18.2%] h-[90%] top-[5%] w-[2px]";
+        if (line === '0,4,8') style = "top-[50%] left-[50%] w-[120%] h-[2px] -translate-x-1/2 -translate-y-1/2 rotate-45";
+        if (line === '2,4,6') style = "top-[50%] left-[50%] w-[120%] h-[2px] -translate-x-1/2 -translate-y-1/2 -rotate-45";
+        const lineColor = winner === 'X' ? 'bg-cyan-400' : 'bg-purple-500';
+        const shadowColor = winner === 'X' ? 'shadow-[0_0_15px_rgba(34,211,238,0.8)]' : 'shadow-[0_0_15px_rgba(168,85,247,0.8)]';
         return (
-             <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="absolute inset-0 z-0 bg-white/5 rounded-[3.5rem] pointer-events-none"
-             />
+            <motion.div 
+                initial={{ scaleX: 0, opacity: 0 }}
+                animate={{ scaleX: 1, opacity: 1 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className={`absolute rounded-full z-30 pointer-events-none origin-center ${style} ${lineColor} ${shadowColor}`}
+            />
         );
     };
 
@@ -97,6 +120,13 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
                 {/* Header: PvE Namespace & Difficulty Selector */}
                 <div className="w-full mb-3 md:mb-8 px-2 shrink-0">
                     <div className="flex items-center justify-between mb-3 md:mb-4">
+                        <button 
+                            onClick={onExit} 
+                            className="p-2 md:p-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-all active:scale-90 group"
+                            aria-label="Back to Menu"
+                        >
+                            <ChevronLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
+                        </button>
                         <div className="flex items-center gap-2 md:gap-3">
                             <div className="w-1.5 h-4 md:h-6 bg-purple-400 rounded-full shadow-[0_0_12px_rgba(192,132,252,0.6)]" />
                             <h2 className="text-lg md:text-xl font-black uppercase tracking-[0.2em] text-white italic">

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { GameState, Player } from '../types/game';
-import { subscribeToGame } from '../services/pusher';
+import { subscribeToGame, setPlayerContext } from '../services/pusher';
 import { roomService } from '../services/api';
 
 /**
@@ -13,6 +13,8 @@ interface GameContextType {
   roomId: string | null;
   playerName: string;
   isSearching: boolean;
+  opponentDisconnected: boolean;
+  opponentForfeit: boolean;
   setPlayerName: (name: string) => void;
   createGame: () => Promise<void>;
   joinGame: (id: string) => Promise<void>;
@@ -37,6 +39,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [roomId, setRoomId] = useState<string | null>(null);
   const [playerName, setPlayerNameState] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
+  const [opponentDisconnected, setOpponentDisconnected] = useState(false);
+  const [opponentForfeit, setOpponentForfeit] = useState(false);
+  const evictionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
    * 🔄 ON MOUNT: Check for an existing session in local storage.
@@ -67,31 +72,76 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
    * 📡 REAL-TIME SYNC: Setup Pusher exactly once whenever roomId changes.
    */
   useEffect(() => {
-    if (roomId) {
-      console.log(`📡 Subscribing to Pusher: game-${roomId}`);
-      const unsubscribe = subscribeToGame(roomId, (updatedGame: GameState) => {
-        console.log('⚡ Real-time update:', updatedGame);
-        setGameState(updatedGame);
-      });
+    if (roomId && playerName && playerSide) {
+      console.log(`📡 Subscribing to Pusher presence channel: presence-game-${roomId}`);
+      
+      // Set player context BEFORE subscribing so the authorizer handshake has correct data
+      setPlayerContext(playerName, playerSide);
+
+      const unsubscribe = subscribeToGame(
+        roomId,
+        (updatedGame: GameState) => {
+          console.log('⚡ Real-time update:', updatedGame);
+          setGameState(updatedGame);
+        },
+        () => {
+          // 👻 Opponent's socket dropped — start 10s grace period
+          console.log('👻 Opponent disconnected. Grace period started (10s)...');
+          setOpponentDisconnected(true);
+
+          // Clear any existing timer before starting a new one
+          if (evictionTimerRef.current) clearTimeout(evictionTimerRef.current);
+
+          evictionTimerRef.current = setTimeout(async () => {
+            // Grace period expired — opponent truly left. Show forfeit win!
+            console.log('⏰ Grace period expired. Awarding forfeit win...');
+            const opponentSide: Player = playerSide === 'X' ? 'O' : 'X';
+
+            // 🏆 Show victory moment first
+            setOpponentForfeit(true);
+
+            // After 3.5s, evict opponent + clean up
+            setTimeout(async () => {
+              try {
+                await roomService.leaveRoom(roomId, opponentSide);
+                console.log('✅ Opponent evicted from room after forfeit.');
+              } catch (err) {
+                refreshRoom();
+              }
+              setOpponentDisconnected(false);
+              setOpponentForfeit(false);
+            }, 3500);
+          }, 10000); // 10-second grace period
+        },
+        () => {
+          // ✅ Opponent reconnected within grace period — cancel eviction
+          console.log('✅ Opponent reconnected! Cancelling eviction.');
+          if (evictionTimerRef.current) {
+            clearTimeout(evictionTimerRef.current);
+            evictionTimerRef.current = null;
+          }
+          setOpponentDisconnected(false);
+        }
+      );
 
       // Fetch immediate baseline state
       refreshRoom();
 
-      // Delayed fetch to ensure no web-socket handshake events were missed
       const timeoutId = setTimeout(() => {
         console.log('🔄 Delayed handshake sync...');
         refreshRoom();
       }, 1500);
 
-      // (Note: Removed continuous interval polling to trust Pusher strictly)
-
       return () => {
         clearTimeout(timeoutId);
+        if (evictionTimerRef.current) clearTimeout(evictionTimerRef.current);
         console.log(`🔌 Unsubscribing from game-${roomId}`);
-        unsubscribe();
+        if (typeof unsubscribe === 'function') unsubscribe();
       };
     }
-  }, [roomId]);
+  }, [roomId, playerName, playerSide]);
+
+  // No sendBeacon needed — presence channel handles disconnect detection natively
 
   const createGame = async () => {
     setIsSearching(true);
@@ -175,7 +225,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         playerSide, 
         roomId, 
         playerName,
-        isSearching, 
+        isSearching,
+        opponentDisconnected,
+        opponentForfeit,
         setPlayerName,
         createGame, 
         joinGame,

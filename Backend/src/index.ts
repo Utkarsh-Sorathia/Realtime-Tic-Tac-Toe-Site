@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
 import roomRoutes from './routes/roomRoutes.js';
+import pusherRoutes from './routes/pusherRoutes.js';
 
 dotenv.config();
 
@@ -20,9 +21,11 @@ mongoose.connect(mongoUri)
 app.use(morgan('dev'));
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: false })); // Required for Pusher auth form-encoded payload
 
 // API Routes initialization
 app.use('/api/room', roomRoutes);
+app.use('/api/pusher', pusherRoutes);
 
 // Health check endpoint
 app.get('/', (req, res) => {

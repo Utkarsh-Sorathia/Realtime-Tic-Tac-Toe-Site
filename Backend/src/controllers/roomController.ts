@@ -200,6 +200,13 @@ export const leaveRoom = async (req: Request, res: Response<GameResponse>) => {
         await GameModel.deleteOne({ roomId });
         console.log(`🗑️ DB Clean: ${roomId}`);
     } else {
+        // If the game was active, the remaining player gets a forfeit win
+        if (game.status === 'PLAYING') {
+            const remainingPlayer = game.players.X ? 'X' : 'O';
+            game.scores[remainingPlayer]++;
+            console.log(`🏆 Forfeit win awarded to ${remainingPlayer} in room ${roomId}`);
+        }
+
         game.status = 'WAITING';
         game.board = Array(9).fill(null);
         game.winner = null;

@@ -8,14 +8,23 @@ const WINNING_COMBINATIONS = [
   [0, 4, 8], [2, 4, 6]             // Diagonals
 ];
 
-export function checkWinner(board: BoardState): Player | null {
+export interface WinResult {
+  winner: Player | null;
+  line: number[] | null;
+}
+
+export function checkWinDetails(board: BoardState): WinResult {
   for (const combo of WINNING_COMBINATIONS) {
     const [a, b, c] = combo;
     if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-      return board[a] as Player;
+      return { winner: board[a] as Player, line: combo };
     }
   }
-  return null;
+  return { winner: null, line: null };
+}
+
+export function checkWinner(board: BoardState): Player | null {
+  return checkWinDetails(board).winner;
 }
 
 export function isBoardFull(board: BoardState): boolean {

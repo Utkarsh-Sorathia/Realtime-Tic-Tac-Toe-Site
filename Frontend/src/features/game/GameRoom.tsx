@@ -1,16 +1,45 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGame } from '../../context/GameContext';
-import { Share2, RefreshCw, LogOut, Loader2, Play, Trophy, Check } from 'lucide-react';
+import { Share2, RefreshCw, LogOut, Loader2, Play, Trophy, Check, ChevronLeft } from 'lucide-react';
 import { roomService } from '../../services/api';
+import confetti from 'canvas-confetti';
 
 /**
  * Premium Game Room UI with a session-based scorecard.
  */
 const GameRoom: React.FC = () => {
-    const { gameState, playerSide, roomId, leaveRoom, refreshRoom } = useGame();
+    const { gameState, playerSide, roomId, leaveRoom, refreshRoom, opponentDisconnected, opponentForfeit } = useGame();
     const [isActionLoading, setIsActionLoading] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
+
+    // Victory celebration (Confetti + Haptics)
+    React.useEffect(() => {
+        if (gameState?.status === 'WON' && gameState?.winner === playerSide) {
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#22d3ee', '#ffffff', '#ec4899'] // Match PvP themed colors (Cyan/Pink)
+            });
+            if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
+        } else if (gameState?.status === 'DRAW' && navigator.vibrate) {
+            navigator.vibrate(50);
+        }
+    }, [gameState?.status, gameState?.winner, playerSide]);
+
+    // 🏆 Forfeit Victory: opponent didn't reconnect in time
+    React.useEffect(() => {
+        if (opponentForfeit) {
+            confetti({
+                particleCount: 200,
+                spread: 100,
+                origin: { y: 0.5 },
+                colors: ['#fbbf24', '#f59e0b', '#ffffff', '#22d3ee', '#ec4899']
+            });
+            if (navigator.vibrate) navigator.vibrate([100, 50, 200, 50, 300]);
+        }
+    }, [opponentForfeit]);
 
     if (!gameState || !roomId || !playerSide) return null;
 
@@ -18,7 +47,8 @@ const GameRoom: React.FC = () => {
         if (gameState.currentTurn !== playerSide || 
             gameState.board[index] !== null || 
             gameState.status !== 'PLAYING' ||
-            isActionLoading) {
+            isActionLoading ||
+            opponentDisconnected) {  // 🚫 Block moves during opponent grace period
             return;
         }
 
@@ -111,6 +141,13 @@ const GameRoom: React.FC = () => {
                 {/* Header: Combat Zone Namespace & Session Details */}
                 <div className="w-full mb-3 md:mb-8 px-2 shrink-0">
                     <div className="flex items-center justify-between mb-3 md:mb-4">
+                        <button 
+                            onClick={leaveRoom} 
+                            className="p-2 md:p-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-all active:scale-90 group"
+                            aria-label="Leave Game"
+                        >
+                            <ChevronLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
+                        </button>
                         <div className="flex items-center gap-2 md:gap-3">
                             <div className="w-1.5 h-4 md:h-6 bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.6)]" />
                             <h2 className="text-lg md:text-xl font-black uppercase tracking-[0.2em] text-white italic">
@@ -142,11 +179,53 @@ const GameRoom: React.FC = () => {
                     </div>
                 </div>
 
+                {/* 🏆 FORFEIT WIN BANNER — shown when grace period expires */}
+                <AnimatePresence>
+                {opponentForfeit && (
+                    <motion.div
+                        key="forfeit-banner"
+                        initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                        transition={{ duration: 0.4, type: 'spring', bounce: 0.4 }}
+                        className="mx-2 mb-3 md:mb-4 shrink-0 flex items-center gap-3 bg-yellow-400/10 border border-yellow-400/40 rounded-xl px-4 py-3 backdrop-blur-xl shadow-[0_0_30px_rgba(250,204,21,0.15)]"
+                    >
+                        <Trophy className="w-5 h-5 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)] shrink-0" />
+                        <div>
+                            <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-yellow-400">🏆 You Win by Forfeit!</p>
+                            <p className="text-[9px] text-yellow-400/60 font-medium">Opponent failed to reconnect in time</p>
+                        </div>
+                    </motion.div>
+                )}
+                </AnimatePresence>
+
+                {/* 👻 RECONNECTION BANNER — shown during grace period */}
+                <AnimatePresence>
+                {opponentDisconnected && (
+                    <motion.div
+                        key="reconnect-banner"
+                        initial={{ opacity: 0, y: -10, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.96 }}
+                        transition={{ duration: 0.3 }}
+                        className="mx-2 mb-3 md:mb-4 shrink-0 flex items-center gap-3 bg-orange-500/10 border border-orange-400/30 rounded-xl px-4 py-3 backdrop-blur-xl"
+                    >
+                        <div className="relative">
+                            <Loader2 className="w-4 h-4 text-orange-400 animate-spin" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-orange-400">Opponent Reconnecting...</p>
+                            <p className="text-[9px] text-orange-400/60 font-medium">Waiting 10 seconds before ending the session</p>
+                        </div>
+                    </motion.div>
+                )}
+                </AnimatePresence>
+
                 {/* Tournament Scoreboard */}
                 <div className="flex items-center gap-2 md:gap-4 mb-3 md:mb-8 shrink-0 px-2 md:px-0">
                     <div className={`flex-1 bg-white/5 border-2 rounded-2xl md:rounded-4xl p-3 md:p-5 flex flex-col items-center relative transition-all duration-500 ${gameState.currentTurn === 'X' && gameState.status === 'PLAYING' ? 'border-cyan-500/40 shadow-[0_0_35px_rgba(34,211,238,0.15)] scale-105' : 'border-white/5'}`}>
                         <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400/60 mb-1 md:mb-2 truncate max-w-[80px] md:max-w-[100px]">
-                            {gameState.players.X || "GUEST_X"}
+                            {gameState.players.X || "GUEST_X"} {playerSide === 'X' && "(YOU)"}
                         </span>
                         <div className="flex items-center gap-3">
                             <span className="text-3xl md:text-5xl font-black text-white tracking-tighter">{gameState.scores.X}</span>
@@ -164,7 +243,7 @@ const GameRoom: React.FC = () => {
 
                     <div className={`flex-1 bg-white/5 border-2 rounded-2xl md:rounded-4xl p-3 md:p-5 flex flex-col items-center relative transition-all duration-500 ${gameState.currentTurn === 'O' && gameState.status === 'PLAYING' ? 'border-pink-500/40 shadow-[0_0_35px_rgba(236,72,153,0.15)] scale-105' : 'border-white/5'}`}>
                         <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-pink-500/60 mb-1 md:mb-2 truncate max-w-[80px] md:max-w-[100px]">
-                            {gameState.players.O || "GUEST_O"}
+                            {gameState.players.O || "GUEST_O"} {playerSide === 'O' && "(YOU)"}
                         </span>
                         <div className="flex items-center gap-3">
                             <span className="text-3xl md:text-5xl font-black text-white tracking-tighter">{gameState.scores.O}</span>
