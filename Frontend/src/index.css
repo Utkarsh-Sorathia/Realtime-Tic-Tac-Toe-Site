@@ -1,1 +1,29 @@
 @import "tailwindcss";
+
+:root {
+  /* Neutral Palette */
+  --site-bg: #0f172a;           /* Deep Space Slate-900 */
+  --surface-bg: rgba(255, 255, 255, 0.05); /* Frosted Cards */
+  --surface-border: rgba(255, 255, 255, 0.1); 
+  --text-muted: #94a3b8;        /* Slate-400 */
+
+  /* Global Branding Tokens */
+  --primary-cyan: #22d3ee;      /* Team X / Main Buttons */
+  --primary-glow: rgba(34, 211, 238, 0.4);
+
+  --secondary-pink: #ec4899;    /* Team O / Accents */
+  --secondary-glow: rgba(236, 72, 153, 0.4);
+
+  --accent-purple: #a855f7;     /* AI / Cyber match */
+  --accent-emerald: #10b981;    /* Success / Public Matchmaking */
+  --accent-orange: #fb923c;     /* Warnings / Stability */
+  --accent-red: #ef4444;        /* Danger / Exit */
+}
+
+body {
+  background-color: var(--site-bg);
+  color: white;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}

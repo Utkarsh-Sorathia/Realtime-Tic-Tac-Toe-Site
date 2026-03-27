@@ -40,4 +40,15 @@ export const roomService = {
   }
 };
 
+export const matchService = {
+  joinQueue: async (playerName: string, socketId: string) => {
+    const response = await api.post('/match/join', { playerName, socketId });
+    return response.data;
+  },
+  leaveQueue: async (socketId: string) => {
+    const response = await api.post('/match/leave', { socketId });
+    return response.data;
+  }
+};
+
 export default api;

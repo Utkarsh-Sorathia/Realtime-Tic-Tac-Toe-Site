@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { GameState, Player } from '../types/game';
-import { subscribeToGame, setPlayerContext } from '../services/pusher';
-import { roomService } from '../services/api';
+import { subscribeToGame, setPlayerContext, pusherClient } from '../services/pusher';
+import { roomService, matchService } from '../services/api';
 
 /**
  * Interface for our global Game State manager.
@@ -13,14 +13,17 @@ interface GameContextType {
   roomId: string | null;
   playerName: string;
   isSearching: boolean;
+  isSearchingMatch: boolean;
   opponentDisconnected: boolean;
   opponentForfeit: boolean;
   setPlayerName: (name: string) => void;
   createGame: () => Promise<void>;
-  joinGame: (id: string) => Promise<void>;
+  joinGame: (id: string, side?: Player) => Promise<void>;
+  joinMatchmaking: () => Promise<void>;
   updateGameLocally: (newState: GameState) => void;
   leaveRoom: () => Promise<void>;
   refreshRoom: () => Promise<void>;
+  pusherChannel: any | null; // The low-level Pusher channel for custom events
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -39,8 +42,10 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [roomId, setRoomId] = useState<string | null>(null);
   const [playerName, setPlayerNameState] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
+  const [isSearchingMatch, setIsSearchingMatch] = useState(false);
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
   const [opponentForfeit, setOpponentForfeit] = useState(false);
+  const [pusherChannel, setPusherChannel] = useState<any | null>(null);
   const evictionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gameStateRef = useRef<GameState | null>(null);
 
@@ -84,7 +89,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Set player context BEFORE subscribing so the authorizer handshake has correct data
       setPlayerContext(playerName, playerSide);
 
-      const unsubscribe = subscribeToGame(
+      const { unsubscribe, channel } = subscribeToGame(
         roomId,
         (updatedGame: GameState) => {
           console.log('⚡ Real-time update:', updatedGame);
@@ -144,6 +149,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       );
 
+      setPusherChannel(channel);
+
       // Fetch immediate baseline state
       refreshRoom();
 
@@ -156,7 +163,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         clearTimeout(timeoutId);
         if (evictionTimerRef.current) clearTimeout(evictionTimerRef.current);
         console.log(`🔌 Unsubscribing from game-${roomId}`);
-        if (typeof unsubscribe === 'function') unsubscribe();
+        if (unsubscribe) unsubscribe();
+        setPusherChannel(null);
       };
     }
   }, [roomId, playerName, playerSide]);
@@ -181,20 +189,52 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const joinGame = async (id: string) => {
+  const joinGame = async (id: string, side?: Player) => {
     setIsSearching(true);
     try {
       const res = await roomService.joinRoom(id, playerName);
-      if (res.success && res.game && res.assignedSide) {
+      if (res.success && res.game) {
         setGameState(res.game);
         setRoomId(id);
-        setPlayerSide(res.assignedSide);
-
-        localStorage.setItem(STORAGE_KEY_ROOM, id);
-        localStorage.setItem(STORAGE_KEY_SIDE, res.assignedSide);
+        const finalSide = side || res.assignedSide;
+        if (finalSide) {
+          setPlayerSide(finalSide);
+          localStorage.setItem(STORAGE_KEY_ROOM, id);
+          localStorage.setItem(STORAGE_KEY_SIDE, finalSide);
+        }
       }
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const joinMatchmaking = async () => {
+    if (!playerName) return;
+    setIsSearchingMatch(true);
+
+    const socketId = pusherClient.connection.socket_id;
+    if (!socketId) {
+        console.error('Pusher not connected');
+        setIsSearchingMatch(false);
+        return;
+    }
+
+    // Subscribe to our own private channel for match notification
+    const personalChannel = pusherClient.subscribe(`private-notification-${socketId}`);
+    
+    personalChannel.bind('match-found', async (data: { roomId: string, side: Player }) => {
+        console.log('🎯 Match found!', data);
+        await joinGame(data.roomId, data.side);
+        setIsSearchingMatch(false);
+        personalChannel.unbind_all();
+        pusherClient.unsubscribe(`private-notification-${socketId}`);
+    });
+
+    try {
+        await matchService.joinQueue(playerName, socketId);
+    } catch (err) {
+        console.error('Matchmaking join failed:', err);
+        setIsSearchingMatch(false);
     }
   };
 
@@ -251,9 +291,12 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setPlayerName,
         createGame, 
         joinGame,
+        joinMatchmaking,
         updateGameLocally,
         leaveRoom,
-        refreshRoom
+        refreshRoom,
+        isSearchingMatch,
+        pusherChannel
     }}>
       {children}
     </GameContext.Provider>

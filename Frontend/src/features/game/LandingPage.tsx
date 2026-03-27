@@ -1,18 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Gamepad2, Users, ArrowRight, Loader2, User, Cpu } from 'lucide-react';
+import { Gamepad2, Users, ArrowRight, Loader2, User, Cpu, Sparkles } from 'lucide-react';
 import { useGame } from '../../context/GameContext';
 import { useSearchParams } from 'react-router-dom';
+import { pusherClient } from '../../services/pusher';
 
 interface LandingPageProps {
     onPlayVSComputer?: () => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
-    const { createGame, joinGame, isSearching, playerName, setPlayerName } = useGame();
+    const { createGame, joinGame, isSearching, isSearchingMatch, joinMatchmaking, playerName, setPlayerName } = useGame();
     const [roomIdInput, setRoomIdInput] = useState('');
     const [status, setStatus] = useState<string | null>(null);
     const [searchParams, setSearchParams] = useSearchParams();
+    const [onlineCount, setOnlineCount] = useState<number>(0);
+
+    useEffect(() => {
+        // Subscribe to a global lobby channel just for counting players online
+        const lobbyChannel = pusherClient.subscribe('presence-lobby');
+
+        lobbyChannel.bind('pusher:subscription_succeeded', (members: any) => {
+            setOnlineCount(members.count);
+        });
+
+        lobbyChannel.bind('pusher:member_added', () => {
+            setOnlineCount(prev => prev + 1);
+        });
+
+        lobbyChannel.bind('pusher:member_removed', () => {
+            setOnlineCount(prev => prev - 1);
+        });
+
+        return () => {
+            lobbyChannel.unbind_all();
+            pusherClient.unsubscribe('presence-lobby');
+        };
+    }, []);
 
     useEffect(() => {
         const inviteRoom = searchParams.get('room');
@@ -59,10 +83,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
     };
 
     return (
-        <div className="h-dvh w-full bg-slate-900 overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 relative">
+        <div className="h-dvh w-full bg-(--site-bg) overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 relative">
             {/* Animated Background Orbs for Premium Feel */}
-            <div className="absolute top-1/4 -left-20 w-64 h-64 md:w-80 md:h-80 bg-cyan-500/20 rounded-full blur-[100px] md:blur-[120px] animate-pulse pointer-events-none" />
-            <div className="absolute bottom-1/4 -right-20 w-64 h-64 md:w-80 md:h-80 bg-pink-500/20 rounded-full blur-[100px] md:blur-[120px] animate-pulse pointer-events-none" />
+            <div className="absolute top-1/4 -left-20 w-64 h-64 md:w-80 md:h-80 bg-(--primary-cyan)/20 rounded-full blur-[100px] md:blur-[120px] animate-pulse pointer-events-none" />
+            <div className="absolute bottom-1/4 -right-20 w-64 h-64 md:w-80 md:h-80 bg-(--secondary-pink)/20 rounded-full blur-[100px] md:blur-[120px] animate-pulse pointer-events-none" />
 
             {/* Main Landing Panel */}
             <motion.div 
@@ -74,25 +98,33 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
                 <div className="text-center mb-4 md:mb-10 shrink-0">
                     <motion.div 
                         whileHover={{ scale: 1.1 }}
-                        className="inline-flex p-3 md:p-4 rounded-3xl bg-cyan-500/10 border border-cyan-500/20 mb-3 md:mb-6"
+                        className="inline-flex p-3 md:p-4 rounded-3xl bg-(--primary-cyan)/10 border border-(--primary-cyan)/20 mb-3 md:mb-6"
                     >
-                        <Gamepad2 className="text-cyan-400 w-10 h-10 md:w-12 md:h-12" />
+                        <Gamepad2 className="text-(--primary-cyan) w-10 h-10 md:w-12 md:h-12" />
                     </motion.div>
-                    <h1 className="text-3xl md:text-5xl font-black bg-linear-to-r from-cyan-400 via-white to-pink-500 bg-clip-text text-transparent mb-2 md:mb-4 tracking-tight">
+                    <h1 className="text-3xl md:text-5xl font-black bg-linear-to-r from-(--primary-cyan) via-white to-(--secondary-pink) bg-clip-text text-transparent mb-2 md:mb-4 tracking-tight">
                         Tic Tac Toe
                     </h1>
-                    <p className="text-slate-400 text-xs md:text-lg tracking-wide">Real-time multiplayer experience.</p>
+                    <div className="flex flex-col items-center gap-1 md:gap-2">
+                        <p className="text-(--text-muted) text-xs md:text-lg tracking-wide">Real-time multiplayer experience.</p>
+                        <div className="flex items-center gap-2 bg-(--accent-emerald)/10 border border-(--accent-emerald)/20 px-3 py-1 rounded-full">
+                            <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-(--accent-emerald) rounded-full animate-pulse shadow-[0_0_10px_var(--accent-emerald)]" />
+                            <span className="text-[9px] md:text-xs font-black text-(--accent-emerald) uppercase tracking-widest leading-none">
+                                {onlineCount > 0 ? `${onlineCount} Players Online` : 'Systems Online'}
+                            </span>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-5 md:p-8 rounded-4xl shadow-2xl flex flex-col gap-3 md:gap-6 shrink">
+                <div className="bg-(--surface-bg) backdrop-blur-xl border border-(--surface-border) p-5 md:p-8 rounded-4xl shadow-2xl flex flex-col gap-3 md:gap-6 shrink">
                     
                     {/* Display Name Field */}
                     <div className="flex flex-col gap-1 md:gap-2">
-                        <label htmlFor="playerName" className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-500 px-1">
+                        <label htmlFor="playerName" className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-(--text-muted) px-1">
                             {roomIdInput ? 'Join the Arena As' : 'Your Identity'}
                         </label>
                         <div className="relative group">
-                            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-cyan-400 transition-colors w-4 h-4 md:w-5 md:h-5" />
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-(--primary-cyan) transition-colors w-4 h-4 md:w-5 md:h-5" />
                             <input 
                                 id="playerName"
                                 type="text" 
@@ -101,7 +133,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
                                 onChange={(e) => setPlayerName(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && roomIdInput && handleJoinRoom()}
                                 aria-label="Enter your display name"
-                                className="w-full bg-white/5 border border-white/10 focus:border-cyan-500/50 outline-none rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-4 py-3 md:py-4 text-white placeholder:text-slate-700 transition-all font-bold text-sm md:text-base"
+                                className="w-full bg-white/5 border border-white/10 focus:border-(--primary-cyan)/50 outline-none rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-4 py-3 md:py-4 text-white placeholder:text-slate-700 transition-all font-bold text-sm md:text-base"
                             />
                         </div>
                     </div>
@@ -115,18 +147,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
                         whileTap={{ scale: 0.98 }}
                         onClick={handleCreateRoom}
                         aria-label="Create a new private game room"
-                        className="group flex items-center justify-between px-5 md:px-6 py-3 md:py-5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-xl md:rounded-2xl transition-all"
+                        className="group flex items-center justify-between px-5 md:px-6 py-3 md:py-5 bg-(--primary-cyan)/10 hover:bg-(--primary-cyan)/20 border border-(--primary-cyan)/30 rounded-xl md:rounded-2xl transition-all"
                     >
                         <div className="flex flex-col items-start gap-0 md:gap-1">
                             <span className="text-white font-black text-base md:text-lg">Start New Game</span>
-                            <span className="text-slate-400 text-xs md:text-sm">Create a private lobby.</span>
+                            <span className="text-(--text-muted) text-xs md:text-sm">Create a private lobby.</span>
                         </div>
-                        {isSearching ? <Loader2 className="animate-spin text-cyan-400 w-5 h-5 md:w-6 md:h-6" /> : <Gamepad2 className="text-cyan-400 group-hover:rotate-12 transition-transform w-5 h-5 md:w-6 md:h-6" />}
+                        {isSearching ? <Loader2 className="animate-spin text-(--primary-cyan) w-5 h-5 md:w-6 md:h-6" /> : <Gamepad2 className="text-(--primary-cyan) group-hover:rotate-12 transition-transform w-5 h-5 md:w-6 md:h-6" />}
                     </motion.button>
 
                     <div className="flex items-center gap-3 md:gap-4">
                         <div className="h-px flex-1 bg-white/10"></div>
-                        <span className="text-purple-500/70 text-[10px] md:text-xs font-bold uppercase tracking-widest leading-none">Or Face The AI</span>
+                        <span className="text-(--accent-purple)/70 text-[10px] md:text-xs font-bold uppercase tracking-widest leading-none">Or Face The AI</span>
                         <div className="h-px flex-1 bg-white/10"></div>
                     </div>
 
@@ -135,26 +167,64 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
                         whileTap={{ scale: 0.98 }}
                         onClick={onPlayVSComputer}
                         aria-label="Play against computer offline"
-                        className="group flex items-center justify-between px-5 md:px-6 py-3 md:py-5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-xl md:rounded-2xl transition-all"
+                        className="group flex items-center justify-between px-5 md:px-6 py-3 md:py-5 bg-(--accent-purple)/10 hover:bg-(--accent-purple)/20 border border-(--accent-purple)/30 rounded-xl md:rounded-2xl transition-all"
                     >
                         <div className="flex flex-col items-start gap-0 md:gap-1">
                             <span className="text-white font-black text-base md:text-lg">Cyber Match</span>
-                            <span className="text-slate-400 text-xs md:text-sm hidden sm:block">Play locally against the Minimax Engine.</span>
-                            <span className="text-slate-400 text-xs sm:hidden">Minimax Engine.</span>
+                            <span className="text-(--text-muted) text-xs md:text-sm hidden sm:block">Play locally against the Minimax Engine.</span>
+                            <span className="text-(--text-muted) text-xs sm:hidden">Minimax Engine.</span>
                         </div>
-                        <Cpu className="text-purple-400 group-hover:rotate-12 transition-transform w-5 h-5 md:w-6 md:h-6" />
+                        <Cpu className="text-(--accent-purple) group-hover:rotate-12 transition-transform w-5 h-5 md:w-6 md:h-6" />
                     </motion.button>
 
                     <div className="flex items-center gap-3 md:gap-4">
                         <div className="h-px flex-1 bg-white/10"></div>
-                        <span className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest leading-none">Or Join</span>
+                        <span className="text-(--accent-emerald)/70 text-[10px] md:text-xs font-bold uppercase tracking-widest leading-none">Or Match Instantly</span>
+                        <div className="h-px flex-1 bg-white/10"></div>
+                    </div>
+
+                    {/* Quick Match Action */}
+                    <motion.button
+                        id="quickMatchBtn"
+                        disabled={isSearching || isSearchingMatch || !playerName}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                            setStatus('Searching for a worthy opponent...');
+                            joinMatchmaking();
+                        }}
+                        aria-label="Find a public player instantly"
+                        className={`group flex items-center justify-between px-5 md:px-6 py-3 md:py-5 rounded-xl md:rounded-2xl transition-all border ${
+                            isSearchingMatch 
+                                ? 'bg-(--accent-emerald)/20 border-(--accent-emerald)/40 animate-pulse' 
+                                : 'bg-(--accent-emerald)/10 hover:bg-(--accent-emerald)/20 border-(--accent-emerald)/30'
+                        } ${!playerName ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+                    >
+                        <div className="flex flex-col items-start gap-0 md:gap-1 text-left">
+                            <span className="text-white font-black text-base md:text-lg">
+                                {isSearchingMatch ? 'Scanning Arena...' : 'Quick Match'}
+                            </span>
+                            <span className="text-(--text-muted) text-xs md:text-sm">Battle a random player online.</span>
+                        </div>
+                        {isSearchingMatch ? (
+                            <div className="relative">
+                                <Loader2 className="animate-spin text-(--accent-emerald) w-5 h-5 md:w-6 md:h-6" />
+                                <div className="absolute inset-0 bg-(--accent-emerald) blur-md opacity-30 animate-pulse" />
+                            </div>
+                        ) : (
+                            <Sparkles className="text-(--accent-emerald) group-hover:scale-125 transition-transform w-5 h-5 md:w-6 md:h-6" />
+                        )}
+                    </motion.button>
+
+                    <div className="flex items-center gap-3 md:gap-4">
+                        <div className="h-px flex-1 bg-white/10"></div>
+                        <span className="text-(--text-muted) text-[10px] md:text-xs font-bold uppercase tracking-widest leading-none">Or Join</span>
                         <div className="h-px flex-1 bg-white/10"></div>
                     </div>
 
                     {/* Join Room Action */}
                     <div className="flex flex-col gap-2 md:gap-3">
                         <div className="relative group">
-                            <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors w-4 h-4 md:w-5 md:h-5" />
+                            <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-(--text-muted) group-focus-within:text-(--primary-cyan) transition-colors w-4 h-4 md:w-5 md:h-5" />
                             <input 
                                 id="roomCodeInput"
                                 type="text" 
@@ -162,7 +232,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
                                 value={roomIdInput}
                                 onChange={(e) => setRoomIdInput(e.target.value.toUpperCase())}
                                 aria-label="Enter unique 6-digit room code to join"
-                                className="w-full bg-white/5 border border-white/10 focus:border-cyan-500/50 outline-none rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-4 py-3 md:py-4 text-white placeholder:text-slate-600 transition-all font-mono text-sm md:text-base"
+                                className="w-full bg-white/5 border border-white/10 focus:border-(--primary-cyan)/50 outline-none rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-4 py-3 md:py-4 text-white placeholder:text-slate-600 transition-all font-mono text-sm md:text-base"
                             />
                         </div>
                         <motion.button
@@ -172,7 +242,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
                             onClick={handleJoinRoom}
                             aria-label="Join an existing game room with code"
                             className={`flex items-center justify-center gap-2 w-full py-3 md:py-4 rounded-xl md:rounded-2xl font-black transition-all shadow-lg text-sm md:text-base ${
-                                !roomIdInput ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50' : 'bg-white text-slate-900 hover:bg-slate-100 shadow-white/10'
+                                !roomIdInput ? 'bg-slate-800 text-(--text-muted) cursor-not-allowed opacity-50' : 'bg-white text-slate-900 hover:bg-slate-100 shadow-white/10'
                             }`}
                         >
                             Join Game <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
@@ -183,7 +253,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
                         <motion.p 
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="text-center text-xs md:text-sm font-medium text-cyan-400 bg-cyan-400/5 py-1.5 md:py-2 rounded-lg"
+                            className="text-center text-xs md:text-sm font-medium text-(--primary-cyan) bg-(--primary-cyan)/5 py-1.5 md:py-2 rounded-lg"
                         >
                             {status}
                         </motion.p>
@@ -191,8 +261,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
                 </div>
 
                 <div className="mt-4 md:mt-8 text-center shrink-0">
-                    <p className="text-slate-500 text-[10px] md:text-sm">
-                        Built with <span className="text-cyan-400 font-mono">Pusher</span> • <span className="text-pink-400 font-mono">React</span>
+                    <p className="text-(--text-muted) text-[10px] md:text-sm">
+                        Built with <span className="text-(--primary-cyan) font-mono">Pusher</span> • <span className="text-(--secondary-pink) font-mono">React</span>
                     </p>
                 </div>
             </motion.div>

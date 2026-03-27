@@ -68,11 +68,14 @@ export const subscribeToGame = (
     if (onOpponentReconnected) onOpponentReconnected();
   });
 
-  return () => {
-    channel.unbind('game-updated', onUpdate);
-    channel.unbind('pusher:member_removed');
-    channel.unbind('pusher:member_added');
-    pusherClient.unsubscribe(channelName);
+  return {
+    unsubscribe: () => {
+      channel.unbind('game-updated', onUpdate);
+      channel.unbind('pusher:member_removed');
+      channel.unbind('pusher:member_added');
+      pusherClient.unsubscribe(channelName);
+    },
+    channel
   };
 };
 

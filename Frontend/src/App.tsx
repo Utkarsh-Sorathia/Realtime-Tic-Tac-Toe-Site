@@ -18,14 +18,14 @@ function App() {
   // If in PvE mode, render the offline cyber match.
   if (isPvE) {
       return (
-          <div className="antialiased font-sans selection:bg-purple-500/30">
+          <div className="antialiased font-sans selection:bg-(--accent-purple)/30">
               <GameRoomPvE onExit={() => setIsPvE(false)} />
           </div>
       );
   }
 
   return (
-    <div className="antialiased font-sans selection:bg-cyan-500/30">
+    <div className="antialiased font-sans selection:bg-(--primary-cyan)/30">
       <Routes>
         <Route 
           path="/" 

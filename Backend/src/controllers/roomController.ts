@@ -9,7 +9,7 @@ import { connectDB } from '../config/db.js';
  * We use an in-memory cache for Sub-Millisecond Speed (Elite Experience)
  * and MongoDB for Extreme Reliability (Vercel/Stable Experience).
  */
-const gameCache: Record<string, GameState> = {};
+export const gameCache: Record<string, GameState> = {};
 
 /**
  * Generates a random numeric 6-digit code.
@@ -77,6 +77,11 @@ export const joinRoom = async (req: Request, res: Response<GameResponse>) => {
 
       if (!game) {
         return res.status(404).json({ success: false, message: "Room not found" });
+      }
+
+      if (game.players.X === playerName || game.players.O === playerName) {
+        const assignedSide = game.players.X === playerName ? 'X' : 'O';
+        return res.json({ success: true, message: "Re-joined successfully", game, assignedSide });
       }
 
       if (game.players.X && game.players.O) {

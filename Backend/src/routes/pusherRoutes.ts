@@ -21,8 +21,16 @@ router.post('/auth', (req, res) => {
     return res.status(400).json({ error: 'socket_id and channel_name are required' });
   }
 
+  // Handle private channels (notifications)
+  if (channel.startsWith('private-')) {
+    const authResponse = pusher.authorizeChannel(socketId, channel);
+    return res.json(authResponse);
+  }
+
   const presenceData = {
-    user_id: playerSide,       // 'X' or 'O' — unique per room slot
+    // If it's the global lobby, use a unique ID so every tab counts as a new player.
+    // If it's a game room, use playerSide ('X' or 'O') to prevent joining twice.
+    user_id: channel === 'presence-lobby' ? `lobby-${socketId}` : playerSide,
     user_info: { name: playerName }
   };
 

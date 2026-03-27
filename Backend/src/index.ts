@@ -5,6 +5,8 @@ import morgan from 'morgan';
 import mongoose from 'mongoose';
 import roomRoutes from './routes/roomRoutes.js';
 import pusherRoutes from './routes/pusherRoutes.js';
+import reactionRoutes from './routes/reactionRoutes.js';
+import matchRoutes from './routes/matchRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -27,6 +29,7 @@ app.use(morgan('dev'));
 app.use(cors({
   origin: [
     'http://localhost:5173', 
+    'http://192.168.1.20:5173',
     'https://tictactoe-elite.vercel.app'
   ],
   credentials: true
@@ -41,6 +44,8 @@ app.set('views', path.join(__dirname, 'views'));
 // API Routes initialization
 app.use('/api/room', roomRoutes);
 app.use('/api/pusher', pusherRoutes);
+app.use('/api/reaction', reactionRoutes);
+app.use('/api/match', matchRoutes);
 
 // Health check & Showcase endpoint
 app.get('/', (req, res) => {

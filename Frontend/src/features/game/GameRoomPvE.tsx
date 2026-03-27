@@ -106,10 +106,11 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
     };
 
     return (
-        <div className="h-dvh bg-slate-900 text-white flex flex-col items-center justify-center p-2 md:p-4 relative overflow-hidden font-sans">
+        <div className="h-dvh bg-(--site-bg) text-white flex flex-col items-center justify-center p-2 md:p-4 relative overflow-hidden font-sans">
+            {/* Animated Background Orbs */}
             <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-30">
-                <div className="absolute top-10 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px]" />
-                <div className="absolute bottom-10 left-10 w-96 h-96 bg-cyan-500/10 rounded-full blur-[100px]" />
+                <div className="absolute top-10 left-10 w-64 md:w-96 h-64 md:h-96 bg-(--accent-purple)/10 rounded-full blur-[80px] md:blur-[100px]" />
+                <div className="absolute bottom-10 right-10 w-64 md:w-96 h-64 md:h-96 bg-(--primary-cyan)/10 rounded-full blur-[80px] md:blur-[100px]" />
             </div>
 
             <motion.div 
@@ -122,19 +123,19 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
                     <div className="flex items-center justify-between mb-3 md:mb-4">
                         <button 
                             onClick={onExit} 
-                            className="p-2 md:p-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-all active:scale-90 group"
+                            className="p-2 md:p-2.5 rounded-xl bg-(--surface-bg) border border-(--surface-border) text-(--text-muted) hover:text-white hover:bg-white/10 transition-all active:scale-90 group"
                             aria-label="Back to Menu"
                         >
                             <ChevronLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
                         </button>
                         <div className="flex items-center gap-2 md:gap-3">
-                            <div className="w-1.5 h-4 md:h-6 bg-purple-400 rounded-full shadow-[0_0_12px_rgba(192,132,252,0.6)]" />
+                            <div className="w-1.5 h-4 md:h-6 bg-(--accent-purple) rounded-full shadow-[0_0_12px_var(--accent-purple)]" />
                             <h2 className="text-lg md:text-xl font-black uppercase tracking-[0.2em] text-white italic">
-                                Cyber <span className="text-purple-400">Match</span>
+                                Cyber <span className="text-(--accent-purple)">Match</span>
                             </h2>
                         </div>
-                        <div className="px-3 py-1 md:px-4 md:py-1.5 rounded-full font-black text-[9px] md:text-[10px] border transition-all tracking-[0.2em] uppercase shrink-0 bg-cyan-500/10 border-cyan-400/30 text-cyan-400">
-                           YOU ARE X
+                        <div className="px-3 py-1 md:px-4 md:py-1.5 bg-(--accent-purple)/10 border border-(--accent-purple)/30 rounded-full font-black text-[9px] md:text-[10px] text-(--accent-purple) transition-all tracking-[0.2em] uppercase shadow-[0_0_15px_var(--accent-purple)] shrink-0">
+                           OFFLINE MODE
                         </div>
                     </div>
 
@@ -163,12 +164,12 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
 
                 {/* Scoreboard */}
                 <div className="flex items-center gap-2 md:gap-4 mb-3 md:mb-8 shrink-0 px-2 md:px-0">
-                    <div className={`flex-1 bg-white/5 border-2 rounded-2xl md:rounded-4xl p-3 md:p-5 flex flex-col items-center relative transition-all duration-500 ${currentTurn === 'X' && status === 'PLAYING' ? 'border-cyan-500/40 shadow-[0_0_35px_rgba(34,211,238,0.15)] scale-105' : 'border-white/5'}`}>
-                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400/60 mb-1 md:mb-2">YOU</span>
+                    <div className={`flex-1 bg-(--surface-bg) border-2 rounded-2xl md:rounded-4xl p-3 md:p-5 flex flex-col items-center relative transition-all duration-500 ${currentTurn === 'X' && status === 'PLAYING' ? 'border-(--primary-cyan)/40 shadow-[0_0_35px_var(--primary-glow)] scale-105' : 'border-white/5'}`}>
+                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-(--primary-cyan)/60 mb-1 md:mb-2">YOU</span>
                         <div className="flex items-center gap-3">
                             <span className="text-3xl md:text-5xl font-black text-white tracking-tighter">{currentScores.X}</span>
                         </div>
-                        {currentTurn === 'X' && status === 'PLAYING' && <motion.div layoutId="turn-pve" className="absolute -bottom-1 w-12 md:w-16 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_15px_rgba(34,211,238,1)]" />}
+                        {currentTurn === 'X' && status === 'PLAYING' && <motion.div layoutId="turn-pve" className="absolute -bottom-1 w-12 md:w-16 h-1.5 bg-(--primary-cyan) rounded-full shadow-[0_0_15px_var(--primary-glow)]" />}
                     </div>
                     
                     <div className="flex flex-col items-center gap-1">
@@ -178,17 +179,17 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
                         </div>
                     </div>
 
-                    <div className={`flex-1 bg-white/5 border-2 rounded-2xl md:rounded-4xl p-3 md:p-5 flex flex-col items-center relative transition-all duration-500 ${currentTurn === 'O' && status === 'PLAYING' ? 'border-purple-500/40 shadow-[0_0_35px_rgba(168,85,247,0.15)] scale-105' : 'border-white/5'}`}>
-                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-purple-500/60 mb-1 md:mb-2">ELITE AI</span>
+                    <div className={`flex-1 bg-(--surface-bg) border-2 rounded-2xl md:rounded-4xl p-3 md:p-5 flex flex-col items-center relative transition-all duration-500 ${currentTurn === 'O' && status === 'PLAYING' ? 'border-(--accent-purple)/40 shadow-[0_0_35px_var(--accent-purple)] scale-105' : 'border-white/5'}`}>
+                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-(--accent-purple)/60 mb-1 md:mb-2">ELITE AI</span>
                         <div className="flex items-center gap-3">
                             <span className="text-3xl md:text-5xl font-black text-white tracking-tighter">{currentScores.O}</span>
                         </div>
-                        {currentTurn === 'O' && status === 'PLAYING' && <motion.div layoutId="turn-pve" className="absolute -bottom-1 w-12 md:w-16 h-1.5 bg-purple-500 rounded-full shadow-[0_0_15px_rgba(168,85,247,1)]" />}
+                        {currentTurn === 'O' && status === 'PLAYING' && <motion.div layoutId="turn-pve" className="absolute -bottom-1 w-12 md:w-16 h-1.5 bg-(--accent-purple) rounded-full shadow-[0_0_15px_var(--accent-purple)]" />}
                     </div>
                 </div>
 
                 {/* The Board */}
-                <div className="w-full max-w-[400px] mx-auto grid grid-cols-3 gap-2 md:gap-4 bg-white/5 backdrop-blur-3xl border border-white/10 p-3 md:p-6 rounded-4xl md:rounded-4xl shadow-2xl aspect-square mb-4 md:mb-10 relative group/board shrink pointer-events-auto">
+                <div className="w-full max-w-[400px] mx-auto grid grid-cols-3 gap-2 md:gap-4 bg-(--surface-bg) backdrop-blur-3xl border border-(--surface-border) p-3 md:p-6 rounded-4xl md:rounded-[3.5rem] shadow-2xl aspect-square mb-4 md:mb-10 relative group/board shrink pointer-events-auto">
                     <AnimatePresence>{renderWinningLine()}</AnimatePresence>
 
                     {board.map((cell, idx) => (
@@ -203,10 +204,10 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
                             }`}
                         >
                             {cell === 'X' && (
-                                <motion.span initial={{ scale:0, rotate:-45 }} animate={{ scale:1, rotate:0 }} className="text-cyan-400 drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]">X</motion.span>
+                                <motion.span initial={{ scale:0, rotate:-45 }} animate={{ scale:1, rotate:0 }} className="text-(--primary-cyan) drop-shadow-[0_0_20px_var(--primary-glow)]">X</motion.span>
                             )}
                             {cell === 'O' && (
-                                <motion.span initial={{ scale:0, scaleX:0.5 }} animate={{ scale:1, scaleX:1 }} className="text-purple-500 drop-shadow-[0_0_20px_rgba(168,85,247,0.6)]">O</motion.span>
+                                <motion.span initial={{ scale:0, scaleX:0.5 }} animate={{ scale:1, scaleX:1 }} className="text-(--accent-purple) drop-shadow-[0_0_20px_var(--accent-purple)]">O</motion.span>
                             )}
                         </motion.button>
                     ))}
@@ -218,13 +219,13 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
                                     <div className="mb-2 md:mb-4 inline-flex p-3 md:p-4 rounded-full bg-white/5 border border-white/10">
                                         <Trophy className={`w-8 h-8 md:w-12 md:h-12 ${status === 'WON' && winner === 'X' ? 'text-yellow-500' : 'text-slate-500'}`} />
                                     </div>
-                                    <h3 className="text-3xl md:text-5xl font-black mb-1 md:mb-2 italic tracking-tighter">
+                                    <h3 className={`text-3xl md:text-5xl font-black mb-1 md:mb-2 italic tracking-tighter ${winner === 'X' ? 'text-(--primary-cyan)' : winner === 'O' ? 'text-(--accent-purple)' : 'text-white'}`}>
                                         {status === 'WON' ? (winner === 'X' ? 'VICTORY' : 'DEFEAT') : "STALEMATE"}
                                     </h3>
-                                    <p className="text-slate-500 mb-6 md:mb-10 text-[10px] md:text-xs font-bold uppercase tracking-[0.3em]">
+                                    <p className="text-(--text-muted) mb-6 md:mb-10 text-[10px] md:text-xs font-bold uppercase tracking-[0.3em]">
                                         {status === 'WON' ? (winner === 'X' ? 'YOU PREVAIL' : 'THE MACHINE WINS') : "A BATTLE OF EQUALS"}
                                     </p>
-                                    <button onClick={handleRematch} className="w-full h-14 md:h-18 bg-white text-slate-950 rounded-xl md:rounded-2xl font-black flex items-center justify-center gap-2 md:gap-3 hover:bg-cyan-100 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] active:scale-95 text-sm md:text-base">
+                                    <button onClick={handleRematch} className="w-full h-14 md:h-18 bg-white text-slate-950 rounded-xl md:rounded-2xl font-black flex items-center justify-center gap-2 md:gap-3 hover:bg-(--accent-purple)/10 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] active:scale-95 text-sm md:text-base">
                                         <Play className="w-4 h-4 md:w-5 md:h-5" fill="currentColor" /> NEXT ROUND
                                     </button>
                                 </motion.div>
@@ -235,19 +236,19 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
 
                 {/* Bottom Action Bar */}
                 <div className="flex items-center gap-3 md:gap-4 shrink-0 px-2 md:px-0">
-                    <div className="flex-1 bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-3 px-4 md:py-4 md:px-6 flex items-center gap-3 md:gap-4">
+                    <div className="flex-1 bg-(--surface-bg) border border-(--surface-border) rounded-xl md:rounded-2xl py-3 px-4 md:py-4 md:px-6 flex items-center gap-3 md:gap-4">
                         <div className={`w-2 h-2 rounded-full ${status === 'PLAYING' ? (isAiThinking ? 'bg-purple-500 animate-pulse' : 'bg-green-500 animate-pulse') : 'bg-yellow-500'}`} />
-                        <span className="font-black text-[9px] md:text-[10px] tracking-[0.2em] text-slate-400 uppercase">
+                        <span className="font-black text-[9px] md:text-[10px] tracking-[0.2em] text-(--text-muted) uppercase">
                              {status === 'PLAYING' ? (isAiThinking ? 'AI IS CALCULATING...' : 'YOUR STRIKE') : 'MATCH CONCLUDED'}
                         </span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <button title="Refresh" onClick={resetGame} className="p-3 md:p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl md:rounded-2xl text-slate-500 hover:text-white transition-all active:scale-90">
+                        <button title="Refresh" onClick={resetGame} className="p-3 md:p-4 bg-(--surface-bg) hover:bg-white/10 border border-(--surface-border) rounded-xl md:rounded-2xl text-(--text-muted) hover:text-white transition-all active:scale-90">
                             <RefreshCw className="w-5 h-5 md:w-6 md:h-6" />
                         </button>
                         
-                        <button title="Leave" onClick={onExit} aria-label="Leave this room" className="p-3 md:p-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl md:rounded-2xl text-red-500 transition-all active:scale-90">
+                        <button title="Leave" onClick={onExit} aria-label="Leave this room" className="p-3 md:p-4 bg-(--accent-red)/10 hover:bg-(--accent-red)/20 border border-(--accent-red)/20 rounded-xl md:rounded-2xl text-(--accent-red) transition-all active:scale-90">
                             <LogOut className="w-5 h-5 md:w-6 md:h-6" />
                         </button>
                     </div>
