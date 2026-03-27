@@ -9,6 +9,38 @@ interface GameRoomPvEProps {
     onExit: () => void;
 }
 
+/**
+ * Optimized individual cell for PvE to prevent board re-renders
+ */
+const BoardCell = React.memo(({ 
+    idx, 
+    cell, 
+    onClick, 
+    canMove 
+}: { 
+    idx: number, 
+    cell: string | null, 
+    onClick: (i: number) => void, 
+    canMove: boolean 
+}) => (
+    <motion.button
+        onClick={() => onClick(idx)}
+        aria-label={`Mark square ${idx + 1}`}
+        whileHover={!cell && canMove ? { scale: 1.05, background: "rgba(255,255,255,0.08)" } : {}}
+        whileTap={!cell && canMove ? { scale: 0.95 } : {}}
+        className={`aspect-square rounded-2xl md:rounded-4xl border-2 border-white/5 bg-white/5 flex items-center justify-center text-5xl md:text-6xl font-black transition-all relative z-10 overflow-hidden ${
+            !cell && canMove ? 'cursor-pointer hover:border-white/20' : 'cursor-default'
+        }`}
+    >
+        {cell === 'X' && (
+            <motion.span initial={{ scale:0, rotate:-45 }} animate={{ scale:1, rotate:0 }} className="text-(--primary-cyan) drop-shadow-[0_0_20px_var(--primary-glow)]">X</motion.span>
+        )}
+        {cell === 'O' && (
+            <motion.span initial={{ scale:0, scaleX:0.5 }} animate={{ scale:1, scaleX:1 }} className="text-(--accent-purple) drop-shadow-[0_0_20px_var(--accent-purple)]">O</motion.span>
+        )}
+    </motion.button>
+));
+
 const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
     // We pass 'X' as human player side. They always start in this simple implementation.
     const humanSide = 'X';
@@ -94,7 +126,7 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
         if (line === '0,4,8') style = "top-[50%] left-[50%] w-[120%] h-[2px] -translate-x-1/2 -translate-y-1/2 rotate-45";
         if (line === '2,4,6') style = "top-[50%] left-[50%] w-[120%] h-[2px] -translate-x-1/2 -translate-y-1/2 -rotate-45";
         const lineColor = winner === 'X' ? 'bg-cyan-400' : 'bg-purple-500';
-        const shadowColor = winner === 'X' ? 'shadow-[0_0_15px_rgba(34,211,238,0.8)]' : 'shadow-[0_0_15px_rgba(168,85,247,0.8)]';
+        const shadowColor = winner === 'X' ? 'shadow-[0_0_5px_rgba(34,211,238,0.2)]' : 'shadow-[0_0_5px_rgba(168,85,247,0.2)]';
         return (
             <motion.div 
                 initial={{ scaleX: 0, opacity: 0 }}
@@ -107,15 +139,16 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
 
     return (
         <div className="h-dvh bg-(--site-bg) text-white flex flex-col items-center justify-center p-2 md:p-4 relative overflow-hidden font-sans">
-            {/* Animated Background Orbs */}
+            {/* Animated Background Orbs (Optimized for Mobile) */}
             <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-30">
-                <div className="absolute top-10 left-10 w-64 md:w-96 h-64 md:h-96 bg-(--accent-purple)/10 rounded-full blur-[80px] md:blur-[100px]" />
-                <div className="absolute bottom-10 right-10 w-64 md:w-96 h-64 md:h-96 bg-(--primary-cyan)/10 rounded-full blur-[80px] md:blur-[100px]" />
+                <div className="absolute top-10 left-10 w-64 md:w-96 h-64 md:h-96 bg-(--accent-purple)/10 rounded-full blur-[60px] md:blur-[100px] animate-pulse will-change-[filter,transform]" />
+                <div className="absolute bottom-10 right-10 w-64 md:w-96 h-64 md:h-96 bg-(--primary-cyan)/10 rounded-full blur-[60px] md:blur-[100px] animate-pulse will-change-[filter,transform]" />
             </div>
 
             <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
                 className="z-10 w-full max-w-lg flex flex-col h-full max-h-dvh justify-center py-2 md:py-4"
             >
                 {/* Header: PvE Namespace & Difficulty Selector */}
@@ -129,12 +162,12 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
                             <ChevronLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
                         </button>
                         <div className="flex items-center gap-2 md:gap-3">
-                            <div className="w-1.5 h-4 md:h-6 bg-(--accent-purple) rounded-full shadow-[0_0_12px_var(--accent-purple)]" />
+                            <div className="w-1.5 h-4 md:h-6 bg-(--accent-purple) rounded-full shadow-[0_0_8px_var(--accent-purple)]" />
                             <h2 className="text-lg md:text-xl font-black uppercase tracking-[0.2em] text-white italic">
                                 Cyber <span className="text-(--accent-purple)">Match</span>
                             </h2>
                         </div>
-                        <div className="px-3 py-1 md:px-4 md:py-1.5 bg-(--accent-purple)/10 border border-(--accent-purple)/30 rounded-full font-black text-[9px] md:text-[10px] text-(--accent-purple) transition-all tracking-[0.2em] uppercase shadow-[0_0_15px_var(--accent-purple)] shrink-0">
+                        <div className="px-3 py-1 md:px-4 md:py-1.5 bg-(--accent-purple)/10 border border-(--accent-purple)/30 rounded-full font-black text-[9px] md:text-[10px] text-(--accent-purple) transition-all tracking-[0.2em] uppercase shrink-0">
                            OFFLINE MODE
                         </div>
                     </div>
@@ -164,12 +197,12 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
 
                 {/* Scoreboard */}
                 <div className="flex items-center gap-2 md:gap-4 mb-3 md:mb-8 shrink-0 px-2 md:px-0">
-                    <div className={`flex-1 bg-(--surface-bg) border-2 rounded-2xl md:rounded-4xl p-3 md:p-5 flex flex-col items-center relative transition-all duration-500 ${currentTurn === 'X' && status === 'PLAYING' ? 'border-(--primary-cyan)/40 shadow-[0_0_35px_var(--primary-glow)] scale-105' : 'border-white/5'}`}>
+                    <div className={`flex-1 bg-(--surface-bg) border-2 rounded-2xl md:rounded-4xl p-3 md:p-5 flex flex-col items-center relative transition-all duration-500 ${currentTurn === 'X' && status === 'PLAYING' ? 'border-(--primary-cyan)/40 shadow-[0_0_20px_var(--primary-glow)] scale-105' : 'border-white/5'}`}>
                         <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-(--primary-cyan)/60 mb-1 md:mb-2">YOU</span>
                         <div className="flex items-center gap-3">
                             <span className="text-3xl md:text-5xl font-black text-white tracking-tighter">{currentScores.X}</span>
                         </div>
-                        {currentTurn === 'X' && status === 'PLAYING' && <motion.div layoutId="turn-pve" className="absolute -bottom-1 w-12 md:w-16 h-1.5 bg-(--primary-cyan) rounded-full shadow-[0_0_15px_var(--primary-glow)]" />}
+                        {currentTurn === 'X' && status === 'PLAYING' && <motion.div layoutId="turn-pve" className="absolute -bottom-1 w-12 md:w-16 h-1.5 bg-(--primary-cyan) rounded-full shadow-[0_0_5px_var(--primary-glow)]" />}
                     </div>
                     
                     <div className="flex flex-col items-center gap-1">
@@ -179,7 +212,7 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
                         </div>
                     </div>
 
-                    <div className={`flex-1 bg-(--surface-bg) border-2 rounded-2xl md:rounded-4xl p-3 md:p-5 flex flex-col items-center relative transition-all duration-500 ${currentTurn === 'O' && status === 'PLAYING' ? 'border-(--accent-purple)/40 shadow-[0_0_35px_var(--accent-purple)] scale-105' : 'border-white/5'}`}>
+                    <div className={`flex-1 bg-(--surface-bg) border-2 rounded-2xl md:rounded-4xl p-3 md:p-5 flex flex-col items-center relative transition-all duration-500 ${currentTurn === 'O' && status === 'PLAYING' ? 'border-(--accent-purple)/40 shadow-[0_0_20px_var(--accent-purple)] scale-105' : 'border-white/5'}`}>
                         <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-(--accent-purple)/60 mb-1 md:mb-2">ELITE AI</span>
                         <div className="flex items-center gap-3">
                             <span className="text-3xl md:text-5xl font-black text-white tracking-tighter">{currentScores.O}</span>
@@ -193,23 +226,13 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
                     <AnimatePresence>{renderWinningLine()}</AnimatePresence>
 
                     {board.map((cell, idx) => (
-                        <motion.button
+                        <BoardCell 
                             key={idx}
-                            onClick={() => handleCellClick(idx)}
-                            aria-label={`Mark square ${idx + 1}`}
-                            whileHover={!cell && canMove ? { scale: 1.05, background: "rgba(255,255,255,0.08)" } : {}}
-                            whileTap={!cell && canMove ? { scale: 0.95 } : {}}
-                            className={`aspect-square rounded-2xl md:rounded-4xl border-2 border-white/5 bg-white/5 flex items-center justify-center text-5xl md:text-6xl font-black transition-all relative z-10 overflow-hidden ${
-                                !cell && canMove ? 'cursor-pointer hover:border-white/20' : 'cursor-default'
-                            }`}
-                        >
-                            {cell === 'X' && (
-                                <motion.span initial={{ scale:0, rotate:-45 }} animate={{ scale:1, rotate:0 }} className="text-(--primary-cyan) drop-shadow-[0_0_20px_var(--primary-glow)]">X</motion.span>
-                            )}
-                            {cell === 'O' && (
-                                <motion.span initial={{ scale:0, scaleX:0.5 }} animate={{ scale:1, scaleX:1 }} className="text-(--accent-purple) drop-shadow-[0_0_20px_var(--accent-purple)]">O</motion.span>
-                            )}
-                        </motion.button>
+                            idx={idx}
+                            cell={cell}
+                            canMove={canMove}
+                            onClick={handleCellClick}
+                        />
                     ))}
                     
                     <AnimatePresence>

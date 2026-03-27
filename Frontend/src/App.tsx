@@ -1,9 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
-import LandingPage from './features/game/LandingPage';
-import GameRoom from './features/game/GameRoom';
-import GameRoomPvE from './features/game/GameRoomPvE';
 import { useGame } from './context/GameContext';
+import { Loader2 } from 'lucide-react';
+
+// Lazy loading core components for performance
+const LandingPage = lazy(() => import('./features/game/LandingPage'));
+const GameRoom = lazy(() => import('./features/game/GameRoom'));
+const GameRoomPvE = lazy(() => import('./features/game/GameRoomPvE'));
+
+/**
+ * A sleek, centered performance-optimized fallback loader
+ */
+const PageLoader = () => (
+  <div className="h-dvh w-full bg-[#0f172a] flex items-center justify-center">
+    <Loader2 className="w-10 h-10 text-[#22d3ee] animate-spin opacity-50" />
+  </div>
+);
 
 function App() {
   const { roomId } = useGame();
@@ -15,30 +27,25 @@ function App() {
       sessionStorage.setItem('isPvE', String(isPvE));
   }, [isPvE]);
 
-  // If in PvE mode, render the offline cyber match.
-  if (isPvE) {
-      return (
-          <div className="antialiased font-sans selection:bg-(--accent-purple)/30">
-              <GameRoomPvE onExit={() => setIsPvE(false)} />
-          </div>
-      );
-  }
-
   return (
-    <div className="antialiased font-sans selection:bg-(--primary-cyan)/30">
-      <Routes>
-        <Route 
-          path="/" 
-          element={roomId ? <Navigate to={`/room/${roomId}`} replace /> : <LandingPage onPlayVSComputer={() => setIsPvE(true)} />} 
-        />
-        <Route 
-          path="/room/:id" 
-          element={
-            <RoomRedirectWrapper />
-          } 
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+    <div className="antialiased font-sans selection:bg-(--primary-cyan)/30 selection:text-white">
+      <Suspense fallback={<PageLoader />}>
+        {isPvE ? (
+             <GameRoomPvE onExit={() => setIsPvE(false)} />
+        ) : (
+          <Routes>
+            <Route 
+              path="/" 
+              element={roomId ? <Navigate to={`/room/${roomId}`} replace /> : <LandingPage onPlayVSComputer={() => setIsPvE(true)} />} 
+            />
+            <Route 
+              path="/room/:id" 
+              element={<RoomRedirectWrapper />} 
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        )}
+      </Suspense>
     </div>
   );
 }

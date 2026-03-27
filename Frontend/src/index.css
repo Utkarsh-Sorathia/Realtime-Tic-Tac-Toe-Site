@@ -20,10 +20,13 @@
   --accent-red: #ef4444;        /* Danger / Exit */
 }
 
-body {
+html, body {
   background-color: var(--site-bg);
   color: white;
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
 }

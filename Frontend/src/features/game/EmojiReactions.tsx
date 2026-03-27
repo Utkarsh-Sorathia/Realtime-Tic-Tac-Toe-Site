@@ -11,6 +11,30 @@ interface Reaction {
   sender: string;
 }
 
+/**
+ * Optimized Emoji Button component for performance
+ */
+const EmojiButton = React.memo(({ 
+  emoji, 
+  onClick, 
+  disabled 
+}: { 
+  emoji: string, 
+  onClick: (e: string) => void, 
+  disabled: boolean 
+}) => (
+  <button
+    onClick={() => onClick(emoji)}
+    disabled={disabled}
+    className={`
+      text-2xl sm:text-3xl p-2 rounded-xl transition-all duration-300
+      ${disabled ? 'opacity-40 grayscale scale-95' : 'hover:scale-125 hover:bg-slate-700/50 active:scale-90'}
+    `}
+  >
+    {emoji}
+  </button>
+));
+
 const EmojiReactions: React.FC = () => {
   const { roomId, playerName, pusherChannel } = useGame();
   const [activeReactions, setActiveReactions] = useState<Reaction[]>([]);
@@ -40,7 +64,7 @@ const EmojiReactions: React.FC = () => {
     };
   }, [pusherChannel]);
 
-  const sendEmoji = async (emoji: string) => {
+  const sendEmoji = React.useCallback(async (emoji: string) => {
     if (cooldown || !roomId || !playerName) return;
 
     setCooldown(true);
@@ -55,7 +79,7 @@ const EmojiReactions: React.FC = () => {
     } catch (err) {
       console.error('Failed to send emoji:', err);
     }
-  };
+  }, [cooldown, roomId, playerName]);
 
   return (
     <>
@@ -86,17 +110,12 @@ const EmojiReactions: React.FC = () => {
       {/* Emoji Picker Bar */}
       <div className="flex items-center justify-center gap-2 mt-4 sm:mt-6 bg-slate-800/40 p-2 rounded-2xl backdrop-blur-md border border-slate-700/50">
         {EMOJIS.map((emoji) => (
-          <button
+          <EmojiButton
             key={emoji}
-            onClick={() => sendEmoji(emoji)}
+            emoji={emoji}
+            onClick={sendEmoji}
             disabled={cooldown}
-            className={`
-              text-2xl sm:text-3xl p-2 rounded-xl transition-all duration-300
-              ${cooldown ? 'opacity-40 grayscale scale-95' : 'hover:scale-125 hover:bg-slate-700/50 active:scale-90'}
-            `}
-          >
-            {emoji}
-          </button>
+          />
         ))}
       </div>
     </>

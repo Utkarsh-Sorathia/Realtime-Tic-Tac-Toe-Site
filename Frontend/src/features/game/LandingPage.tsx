@@ -4,6 +4,18 @@ import { Gamepad2, Users, ArrowRight, Loader2, User, Cpu, Sparkles } from 'lucid
 import { useGame } from '../../context/GameContext';
 import { useSearchParams } from 'react-router-dom';
 import { pusherClient } from '../../services/pusher';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
+
+/**
+ * Optimized Background Orbs that never re-render
+ */
+const BackgroundOrbs = React.memo(() => (
+    <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-30 overflow-hidden">
+        <div className="absolute -top-20 -left-20 w-64 md:w-96 h-64 md:h-96 bg-(--primary-cyan)/20 rounded-full blur-[60px] md:blur-[120px] animate-pulse will-change-[filter,transform]" />
+        <div className="absolute -bottom-20 -right-20 w-64 md:w-96 h-64 md:h-96 bg-(--secondary-pink)/20 rounded-full blur-[60px] md:blur-[120px] animate-pulse will-change-[filter,transform]" />
+    </div>
+));
 
 interface LandingPageProps {
     onPlayVSComputer?: () => void;
@@ -16,20 +28,31 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [onlineCount, setOnlineCount] = useState<number>(0);
 
+    // React Query for system health/stats check
+    const { data: serverStats } = useQuery({
+        queryKey: ['serverStats'],
+        queryFn: async () => {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const { data } = await axios.get(`${apiUrl.replace('/api', '')}/`); // Root health check
+            return data;
+        },
+        refetchInterval: 30000, // Refresh every 30s
+    });
+
     useEffect(() => {
         // Subscribe to a global lobby channel just for counting players online
         const lobbyChannel = pusherClient.subscribe('presence-lobby');
 
-        lobbyChannel.bind('pusher:subscription_succeeded', (members: any) => {
+        lobbyChannel.bind('pusher:subscription_succeeded', (members: { count: number }) => {
             setOnlineCount(members.count);
         });
 
         lobbyChannel.bind('pusher:member_added', () => {
-            setOnlineCount(prev => prev + 1);
+            setOnlineCount((prev: number) => prev + 1);
         });
 
         lobbyChannel.bind('pusher:member_removed', () => {
-            setOnlineCount(prev => prev - 1);
+            setOnlineCount((prev: number) => prev - 1);
         });
 
         return () => {
@@ -83,10 +106,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
     };
 
     return (
-        <div className="h-dvh w-full bg-(--site-bg) overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 relative">
-            {/* Animated Background Orbs for Premium Feel */}
-            <div className="absolute top-1/4 -left-20 w-64 h-64 md:w-80 md:h-80 bg-(--primary-cyan)/20 rounded-full blur-[100px] md:blur-[120px] animate-pulse pointer-events-none" />
-            <div className="absolute bottom-1/4 -right-20 w-64 h-64 md:w-80 md:h-80 bg-(--secondary-pink)/20 rounded-full blur-[100px] md:blur-[120px] animate-pulse pointer-events-none" />
+        <div className="h-dvh bg-(--site-bg) text-white flex flex-col items-center p-2 md:p-6 relative overflow-hidden font-sans">
+            <BackgroundOrbs />
 
             {/* Main Landing Panel */}
             <motion.div 
@@ -107,11 +128,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
                     </h1>
                     <div className="flex flex-col items-center gap-1 md:gap-2">
                         <p className="text-(--text-muted) text-xs md:text-lg tracking-wide">Real-time multiplayer experience.</p>
-                        <div className="flex items-center gap-2 bg-(--accent-emerald)/10 border border-(--accent-emerald)/20 px-3 py-1 rounded-full">
-                            <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-(--accent-emerald) rounded-full animate-pulse shadow-[0_0_10px_var(--accent-emerald)]" />
-                            <span className="text-[9px] md:text-xs font-black text-(--accent-emerald) uppercase tracking-widest leading-none">
-                                {onlineCount > 0 ? `${onlineCount} Players Online` : 'Systems Online'}
-                            </span>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 bg-(--accent-emerald)/10 border border-(--accent-emerald)/20 px-3 py-1 rounded-full">
+                                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-(--accent-emerald) rounded-full animate-pulse shadow-[0_0_6px_var(--accent-emerald)]" />
+                                <span className="text-[9px] md:text-xs font-black text-(--accent-emerald) uppercase tracking-widest leading-none">
+                                    {onlineCount > 0 ? `${onlineCount} Players Online` : 'Systems Online'}
+                                </span>
+                            </div>
+                            {serverStats && (
+                                <div className="flex items-center gap-2 bg-(--primary-cyan)/10 border border-(--primary-cyan)/20 px-3 py-1 rounded-full">
+                                    <span className="text-[8px] md:text-[10px] font-black text-(--primary-cyan) uppercase tracking-widest leading-none">
+                                        ver {serverStats.version || '1.0.0'}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -211,7 +241,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
                                 <div className="absolute inset-0 bg-(--accent-emerald) blur-md opacity-30 animate-pulse" />
                             </div>
                         ) : (
-                            <Sparkles className="text-(--accent-emerald) group-hover:scale-125 transition-transform w-5 h-5 md:w-6 md:h-6" />
+                            <Sparkles className="text-(--accent-emerald) group-hover:rotate-12 transition-transform w-5 h-5 md:w-6 md:h-6" />
                         )}
                     </motion.button>
 
