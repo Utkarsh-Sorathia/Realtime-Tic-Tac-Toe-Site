@@ -81,6 +81,15 @@ export const joinRoom = async (req: Request, res: Response<GameResponse>) => {
 
       if (game.players.X === playerName || game.players.O === playerName) {
         const assignedSide = game.players.X === playerName ? 'X' : 'O';
+        
+        // 🛡️ RE-SYNC: If both players are present but status is stuck in WAITING (e.g. after a refresh/leave desync)
+        if (game.players.X && game.players.O && game.status === 'WAITING') {
+            game.status = 'PLAYING';
+            await GameModel.findOneAndUpdate({ roomId }, { status: 'PLAYING' });
+            gameCache[roomId] = game;
+            await broadcastGameUpdate(roomId, game);
+        }
+
         return res.json({ success: true, message: "Re-joined successfully", game, assignedSide });
       }
 
