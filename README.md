@@ -1,67 +1,71 @@
 # 🎮 Real-Time Tic Tac Toe Elite
 
-A high-performance, multiplayer Tic Tac Toe game with persistent state, real-time synchronization, and a premium user experience.
+![Tic Tac Toe Elite Hero Preview](./Frontend/public/og-image.png)
+
+A high-performance, production-grade multiplayer Tic Tac Toe platform built for lightning-fast synchronization, persistent state management, and a premium, immersive gaming experience.
 
 ---
 
 ## 🚀 Key Features
 
--   **⚡ Real-Time Synchronization**: Instant move updates across all players using **Pusher Channels**.
--   **🍃 Persistent Game State**: Match history, scores, and active board states are stored in **MongoDB**.
--   **🛡️ Self-Cleaning Database**: Implemented a **24-hour TTL (Time To Live)** index to automatically purge inactive "ghost rooms," ensuring high performance.
--   **🔗 Smart Invite System**: Share a direct link to any game room. Players with a link join instantly without entering codes.
--   **📱 PWA support**: Fully installable as a Progressive Web App for a native mobile experience.
--   **🏆 Tournament Scoreboard**: Tracks Wins, Losses, and Draws per session.
--   **🎭 Unified Identity**: Custom player names are persisted in local storage and synchronized with the backend.
+-   **⚡ Real-Time Battle Grid**: Instantaneous move synchronization across all global players powered by **Pusher Channels**.
+-   **🤖 Minimax Cyber-Engine**: Integrated a high-fidelity offline mode featuring a recursive Minimax AI for unbeatable practice sessions.
+-   **🍃 Persistence Layer**: Comprehensive match history, real-time board states, and session-based scoring stored in **MongoDB**.
+-   **🧹 Self-Healing Infrastructure**: Automated **24-hour TTL (Time To Live)** indexing to purge inactive game clusters and optimize database performance.
+-   **🔗 Advanced Invite Matrix**: One-click direct link invite system for instant private room access without manual code entry.
+-   **📱 PWA / Mobile Native**: Fully functional Progressive Web App with zero-scrollbar immersive viewports for a native mobile and desktop feel.
+-   **🎭 Secure Identity**: Encrypted player identity persistence in local storage with real-time heartbeat synchronization.
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Architecture & Tech Stack
 
--   **Frontend**: React, Vite, Tailwind CSS, Framer Motion, Lucide-React.
--   **Backend**: Node.js, Express, TypeScript, Mongoose.
--   **Database**: MongoDB.
--   **Real-time Layer**: Pusher.
--   **Deployment**: Vercel.
+-   **Frontend**: React 18, Vite, **Tailwind CSS**, Framer Motion (Hardware-Accelerated), Lucide-React.
+-   **Backend**: Node.js, Express, **TypeScript (Strict Type Safety)**, Mongoose ODM.
+-   **Database**: MongoDB (Production Instances).
+-   **Real-time Layer**: Pusher (Pub/Sub Presence Channels).
+-   **SEO & Metadata**: Integrated **JSON-LD Structured Data**, OpenGraph protocols, and hardware-accelerated background orbs.
 
 ---
 
 ## ⚙️ Development Setup
 
 ### 1. Prerequisites
-You will need a **MongoDB Connection URI** and **Pusher API credentials**.
+Ensure you have a **MongoDB Cluster URI** and **Pusher API** credentials active.
 
-### 2. Backend Installation
+### 2. Backend Orchestration
 ```bash
 cd Backend
 npm install
-# Create a .env file with your MONGODB_URI and PUSHER credentials
+# Configure .env with MONGODB_URI and PUSHER credentials
 npm run dev
 ```
 
-### 3. Frontend Installation
+### 3. Frontend Execution
 ```bash
 cd Frontend
 npm install
-# Create a .env file with your VITE_API_URL and PUSHER keys
+# Configure .env with VITE_API_URL and VITE_PUSHER_KEY
 npm run dev
 ```
 
 ---
 
-## 📦 Deployment
+## 📦 Production Deployment
 
-This project is optimized for deployment on **Vercel**. 
-- The **Backend** includes a `vercel.json` configuration for seamless serverless execution.
-- The **Frontend** can be deployed directly from the `Frontend` folder.
+The platform is architected for seamless deployment on **Vercel**:
+- **Backend Layer**: Includes custom `vercel.json` for serverless route handling.
+- **Frontend Layer**: Optimized build manifests for edge-network distribution.
 
 ---
 
 ## 👨‍💻 Developed By
 
 **Utkarsh Sorathia**
--   Portfolio: [utkarshsorathia.in](https://utkarshsorathia.in)
--   GitHub: [@Utkarsh-Sorathia](https://github.com/Utkarsh-Sorathia)
+-   **Portfolio**: [utkarshsorathia.in](https://utkarshsorathia.in)
+-   **GitHub**: [@Utkarsh-Sorathia](https://github.com/Utkarsh-Sorathia)
 
 ---
-Licensed under the [MIT License](LICENSE).
+
+## 🛡️ License
+Distributed under the **MIT License**. See `LICENSE` for more information.
