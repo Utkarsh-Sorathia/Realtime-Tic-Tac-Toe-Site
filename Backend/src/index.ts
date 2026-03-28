@@ -29,8 +29,8 @@ app.use(morgan('dev'));
 app.use(cors({
   origin: [
     'http://localhost:5173', 
-    'http://192.168.1.20:5173',
-    'https://tictactoe-elite.vercel.app'
+    'https://tictactoe-elite.vercel.app',
+    /^http:\/\/192\.168\.\d+\.\d+:5173$/ // Allow common local IPs for mobile testing
   ],
   credentials: true
 }));
