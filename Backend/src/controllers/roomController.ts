@@ -96,7 +96,8 @@ export const joinRoom = async (req: Request, res: Response<GameResponse>) => {
         // 🔄 RE-SYNC Status: If both players are present but status is stuck in WAITING (after a refresh/leave desync)
         if (game.players.X && game.players.O && game.status === 'WAITING') {
             game.status = 'PLAYING';
-            await GameModel.findOneAndUpdate({ roomId }, { status: 'PLAYING' });
+            game.currentTurn = game.firstMove || 'X'; // Force consistent turn sync
+            await GameModel.findOneAndUpdate({ roomId }, { status: 'PLAYING', currentTurn: game.currentTurn });
             gameCache[roomId] = game;
             await broadcastGameUpdate(roomId, game);
         }
@@ -115,15 +116,18 @@ export const joinRoom = async (req: Request, res: Response<GameResponse>) => {
       game.players[assignedPlayer] = assignedName;
       if (game.players.X && game.players.O) {
           game.status = 'PLAYING';
+          // 🛡️ SYNC FIX: Ensure the turn resets to the authorized opener when the game activates
+          game.currentTurn = game.firstMove || 'X';
       }
 
-      // Re-save to DB with explicit atomic commit
+      // Re-save to DB with explicit atomic commit (include currentTurn to prevent desync)
       await GameModel.findOneAndUpdate(
           { roomId }, 
           { 
               $set: { 
                   [`players.${assignedPlayer}`]: assignedName,
-                  status: game.status 
+                  status: game.status,
+                  currentTurn: game.currentTurn 
               } 
           },
           { new: true }
@@ -251,7 +255,7 @@ export const leaveRoom = async (req: Request, res: Response<GameResponse>) => {
         game.winningLine = null;
         
         // 🏆 ATOMIC SCORE COMMIT: Ensure the board reset and score increments are saved precisely
-        // 🏆 ATOMIC SCORE COMMIT: Explicitly update the players object to clear slots in DB
+        // 🏆 ATOMIC SCORE COMMIT: Ensure board reset, scores, and TURN SYNC are saved precisely
         await GameModel.findOneAndUpdate(
             { roomId }, 
             { 
@@ -261,8 +265,9 @@ export const leaveRoom = async (req: Request, res: Response<GameResponse>) => {
                     winner: null,
                     winningLine: null,
                     scores: game.scores,
+                    currentTurn: game.firstMove || 'X', // Reset turn to whoever should start next
                     players: {
-                        X: game.players.X || null, // Ensure DB clearing
+                        X: game.players.X || null,
                         O: game.players.O || null
                     }
                 } 
