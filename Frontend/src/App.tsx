@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 const LandingPage = lazy(() => import('./features/game/LandingPage'));
 const GameRoom = lazy(() => import('./features/game/GameRoom'));
 const GameRoomPvE = lazy(() => import('./features/game/GameRoomPvE'));
+const NotFound = lazy(() => import('./features/error/NotFound'));
 
 /**
  * A sleek, centered performance-optimized fallback loader
@@ -42,7 +43,7 @@ function App() {
               path="/room/:id" 
               element={<RoomRedirectWrapper />} 
             />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         )}
       </Suspense>
