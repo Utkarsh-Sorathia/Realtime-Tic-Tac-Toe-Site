@@ -5,6 +5,8 @@ import GameModel from '../models/Game.js';
 import { gameCache } from './roomController.js';
 import type { GameState } from '../types/game.js';
 
+import { connectDB } from '../config/db.js';
+
 interface QueuePlayer {
     playerName: string;
     socketId: string;
@@ -22,6 +24,8 @@ export const joinQueue = async (req: Request, res: Response) => {
     }
 
     try {
+        await connectDB();
+        console.log(`🎯 Player joining queue: ${playerName} [${socketId}]`);
         const playerEntry: QueuePlayer = { playerName, socketId };
         
         // Push the player into the Redis matchmaking list
@@ -43,9 +47,12 @@ export const joinQueue = async (req: Request, res: Response) => {
                 // Create a unique room for them
                 const roomId = Math.floor(100000 + Math.random() * 900000).toString();
 
-                const initialGame: GameState = {
+                const initialGame: any = {
                     roomId,
-                    players: { X: p1.playerName, O: p2.playerName },
+                    players: { 
+                        X: p1.playerName, 
+                        O: p2.playerName 
+                    },
                     board: Array(9).fill(null),
                     currentTurn: 'X',
                     firstMove: 'X',
@@ -55,11 +62,12 @@ export const joinQueue = async (req: Request, res: Response) => {
                     status: 'PLAYING'
                 };
 
-                // Save to MongoDB (Source of truth)
-                await GameModel.create(initialGame);
+                console.log(`🎲 Creating match document for Room ${roomId}...`);
+                const gameDB = await GameModel.create(initialGame);
+                const game = gameDB.toObject() as GameState;
                 
-                // Add to local cache for subsequent fast requests in the same container
-                gameCache[roomId] = initialGame;
+                // Add to local cache
+                gameCache[roomId] = game;
 
                 // Notify both players via their unique private channels
                 // Player 1 becomes X
