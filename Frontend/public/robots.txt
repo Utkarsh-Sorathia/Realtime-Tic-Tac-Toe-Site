@@ -1,3 +1,9 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+
+# Sitemap location
 Sitemap: https://tictactoe-elite.vercel.app/sitemap.xml
+
+# Crawl delay (polite request to bots)
+Crawl-delay: 10

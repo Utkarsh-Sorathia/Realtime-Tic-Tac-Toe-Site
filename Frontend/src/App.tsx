@@ -63,8 +63,8 @@ function RoomRedirectWrapper() {
     return <GameRoom />;
   }
 
-  // If we land here from a link but don't have a session, 
-  // redirect to home with the room detected.
+  // If we land here from a shared link but have no session,
+  // redirect to home with the room param cleanly in the URL without polluting history
   return <Navigate to={`/?room=${id}`} replace />;
 }
 

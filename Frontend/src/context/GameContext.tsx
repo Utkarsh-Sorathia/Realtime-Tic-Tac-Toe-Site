@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import type { GameState, Player } from '../types/game';
 import { subscribeToGame, setPlayerContext, pusherClient } from '../services/pusher';
 import { roomService, matchService } from '../services/api';
@@ -49,7 +49,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [opponentForfeit, setOpponentForfeit] = useState(false);
   const [pusherChannel, setPusherChannel] = useState<any | null>(null);
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const evictionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gameStateRef = useRef<GameState | null>(null);
 
@@ -286,10 +285,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem(STORAGE_KEY_ROOM);
     localStorage.removeItem(STORAGE_KEY_SIDE);
 
-    // ✅ CLEAN URL: Ensure we return to clean root / without stale query params
-    if (searchParams.has('room')) {
-        setSearchParams({}, { replace: true });
-    }
+    // ✅ NUCLEAR URL CLEAN: Wipe the ?room= and /room/ path from history immediately
+    window.history.replaceState(null, '', '/');
     navigate('/', { replace: true });
   };
 

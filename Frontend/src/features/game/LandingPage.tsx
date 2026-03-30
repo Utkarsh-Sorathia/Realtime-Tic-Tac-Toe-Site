@@ -66,8 +66,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
         if (inviteRoom) {
             setRoomIdInput(inviteRoom);
             setStatus(`Invite detected for room ${inviteRoom}! 🔗`);
+            // 🧹 Immediately strip the ?room= param from the URL so it stays clean
+            setSearchParams({}, { replace: true });
         }
-    }, [searchParams]);
+    }, []); // Only run on mount
 
     const handleCreateRoom = async () => {
         if (!playerName) {
@@ -262,12 +264,33 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPlayVSComputer }) => {
                     )}
                 </div>
 
-                <div className="mt-6 text-center shrink-0">
+                <div className="mt-8 text-center shrink-0">
                     <p className="text-(--text-muted) text-[10px] md:text-xs opacity-50">
                         Built with <span className="text-(--primary-cyan) font-mono">Pusher</span> • <span className="text-(--secondary-pink) font-mono">React</span>
                     </p>
                 </div>
             </motion.div>
+
+            {/* Premium Floating Developer Badge */}
+            <motion.a 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.8, duration: 0.5 }}
+                href="https://utkarshsorathia.in" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="fixed bottom-6 right-6 z-50 group flex items-center gap-3 bg-(--surface-bg) backdrop-blur-xl border border-white/5 p-1.5 pr-5 rounded-full shadow-2xl hover:border-(--primary-cyan)/30 hover:bg-white/5 transition-all active:scale-95 cursor-pointer pointer-events-auto"
+            >
+                <div className="w-9 h-9 rounded-full bg-linear-to-br from-(--primary-cyan) to-(--accent-purple) p-[1.5px] group-hover:shadow-[0_0_20px_rgba(34,211,238,0.3)] transition-all duration-500">
+                    <div className="w-full h-full rounded-full bg-slate-950 flex items-center justify-center">
+                        <span className="text-[10px] font-black text-white italic tracking-tighter">US</span>
+                    </div>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em] text-cyan-400/40 group-hover:text-cyan-400 transition-colors">Designed & Developed by</span>
+                    <span className="text-[11px] md:text-xs font-black uppercase tracking-widest text-white/80 group-hover:text-white transition-colors">Utkarsh Sorathia</span>
+                </div>
+            </motion.a>
         </div>
     );
 };
