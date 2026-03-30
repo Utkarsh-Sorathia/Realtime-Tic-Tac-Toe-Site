@@ -47,6 +47,7 @@ export const pusherClient = new Pusher(PUSHER_KEY, {
  */
 export const subscribeToGame = (
   roomId: string,
+  mySide: string,
   onUpdate: (data: any) => void,
   onOpponentLeft?: () => void,
   onOpponentReconnected?: () => void
@@ -56,16 +57,24 @@ export const subscribeToGame = (
 
   channel.bind('game-updated', onUpdate);
 
-  // 👻 OPPONENT LEFT: Triggered when their socket drops (tab close, crash, refresh)
+  // 👻 OPPONENT LEFT: Triggered ONLY if the member who left is the opponent
   channel.bind('pusher:member_removed', (member: { id: string }) => {
-    console.log(`👤 Member [${member.id}] left the channel`);
-    if (onOpponentLeft) onOpponentLeft();
+    const opponentSide = mySide === 'X' ? 'O' : 'X';
+    if (member.id === opponentSide) {
+        console.log(`👤 Opponent [${member.id}] left the channel`);
+        if (onOpponentLeft) onOpponentLeft();
+    } else {
+        console.log(`👤 Local session ghost [${member.id}] cleared`);
+    }
   });
 
-  // ✅ OPPONENT RETURNED: Triggered when they reconnect (page refresh, network back)
+  // ✅ OPPONENT RETURNED: Triggered ONLY if the member who joined is the opponent
   channel.bind('pusher:member_added', (member: { id: string }) => {
-    console.log(`👤 Member [${member.id}] rejoined the channel`);
-    if (onOpponentReconnected) onOpponentReconnected();
+    const opponentSide = mySide === 'X' ? 'O' : 'X';
+    if (member.id === opponentSide) {
+        console.log(`👤 Opponent [${member.id}] rejoined the channel`);
+        if (onOpponentReconnected) onOpponentReconnected();
+    }
   });
 
   return {

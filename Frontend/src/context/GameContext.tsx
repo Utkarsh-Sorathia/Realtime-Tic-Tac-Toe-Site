@@ -80,6 +80,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const { unsubscribe, channel } = subscribeToGame(
         roomId,
+        playerSide,
         (updatedGame: GameState) => {
           console.log('⚡ Real-time update:', updatedGame);
           setGameState(updatedGame);
