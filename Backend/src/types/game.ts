@@ -20,8 +20,8 @@ export interface GameState {
     DRAW: number;
   };
   players: {
-    X?: string | undefined;
-    O?: string | undefined;
+    X: string | null;
+    O: string | null;
   };
 }
 

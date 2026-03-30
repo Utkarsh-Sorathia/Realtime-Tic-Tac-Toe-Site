@@ -25,7 +25,14 @@ export const createRoom = async (req: Request, res: Response<GameResponse>) => {
   try {
     await connectDB();
     const { playerName } = req.body;
-    const roomId = generateNumericCode();
+    let roomId = generateNumericCode();
+    let collisionCheck = await GameModel.findOne({ roomId });
+    
+    // Safety check: rare collision retry for 6-digit codes
+    while (collisionCheck) {
+        roomId = generateNumericCode();
+        collisionCheck = await GameModel.findOne({ roomId });
+    }
     
     const initialState: any = {
       roomId,
@@ -38,7 +45,7 @@ export const createRoom = async (req: Request, res: Response<GameResponse>) => {
       scores: { X: 0, O: 0, DRAW: 0 },
       players: {
         X: playerName || "Player 1",
-        O: undefined
+        O: null
       }
     };
 
@@ -93,7 +100,11 @@ export const joinRoom = async (req: Request, res: Response<GameResponse>) => {
             game.currentTurn = game.firstMove || 'X'; // Force consistent turn sync
             await GameModel.findOneAndUpdate({ roomId }, { status: 'PLAYING', currentTurn: game.currentTurn });
             gameCache[roomId] = game;
-            await broadcastGameUpdate(roomId, game);
+            try {
+                await broadcastGameUpdate(roomId, game);
+            } catch (broadcastErr) {
+                console.error("🏁 Re-sync broadcast failed:", broadcastErr);
+            }
         }
 
         return res.json({ success: true, message: "Re-joined successfully", game, assignedSide });
@@ -211,8 +222,8 @@ export const leaveRoom = async (req: Request, res: Response<GameResponse>) => {
     gameCache[roomId] = game; // Refresh local cache
 
     // 🧹 Explicitly nullify to ensure Mongoose/JSON transmission clears the slot
-    if (player === 'X') game.players.X = undefined;
-    if (player === 'O') game.players.O = undefined;
+    if (player === 'X') game.players.X = null;
+    if (player === 'O') game.players.O = null;
 
     if (!game.players.X && !game.players.O) {
         delete gameCache[roomId];
