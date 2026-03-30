@@ -65,19 +65,13 @@ export const joinRoom = async (req: Request, res: Response<GameResponse>) => {
       await connectDB();
       const roomId = req.params.roomId as string;
       const { playerName } = req.body;
-      let game = gameCache[roomId];
-
-      if (!game) {
-          const dbDoc = await GameModel.findOne({ roomId });
-          if (dbDoc) {
-              game = dbDoc.toObject() as GameState;
-              gameCache[roomId] = game;
-          }
-      }
-
-      if (!game) {
+      const dbDoc = await GameModel.findOne({ roomId });
+      if (!dbDoc) {
         return res.status(404).json({ success: false, message: "Room not found" });
       }
+
+      let game = dbDoc.toObject() as GameState;
+      gameCache[roomId] = game; // Sync local cache for this request's instance
 
       // 🛡️ RE-JOIN LOGIC: Case-insensitive name matching for resilient session re-entry
       const playerX = game.players.X?.toLowerCase();
@@ -130,7 +124,7 @@ export const joinRoom = async (req: Request, res: Response<GameResponse>) => {
                   currentTurn: game.currentTurn 
               } 
           },
-          { new: true }
+          { returnDocument: 'after' }
       );
 
       gameCache[roomId] = game;
@@ -150,19 +144,13 @@ export const getRoomStatus = async (req: Request, res: Response<GameResponse>) =
   try {
     await connectDB();
     const roomId = req.params.roomId as string;
-    let game = gameCache[roomId];
-
-    if (!game) {
-      const dbDoc = await GameModel.findOne({ roomId });
-      if (dbDoc) {
-          game = dbDoc.toObject() as GameState;
-          gameCache[roomId] = game;
-      }
-    }
-
-    if (!game) {
+    const dbDoc = await GameModel.findOne({ roomId });
+    if (!dbDoc) {
         return res.status(404).json({ success: false, message: "Room not found" });
     }
+
+    const game = dbDoc.toObject() as GameState;
+    gameCache[roomId] = game; // Refresh local cache
 
     res.json({ success: true, game });
   } catch (error) {
@@ -178,19 +166,13 @@ export const rematch = async (req: Request, res: Response<GameResponse>) => {
   try {
     await connectDB();
     const roomId = req.params.roomId as string;
-    let game = gameCache[roomId];
-
-    if (!game) {
-      const dbDoc = await GameModel.findOne({ roomId });
-      if (dbDoc) {
-          game = dbDoc.toObject() as GameState;
-          gameCache[roomId] = game;
-      }
-    }
-
-    if (!game) {
+    const dbDoc = await GameModel.findOne({ roomId });
+    if (!dbDoc) {
       return res.status(404).json({ success: false, message: "Room not found" });
     }
+
+    const game = dbDoc.toObject() as GameState;
+    gameCache[roomId] = game; // Refresh local cache
 
     const nextToStart: Player = game.firstMove === 'X' ? 'O' : 'X';
     game.board = Array(9).fill(null);
@@ -220,18 +202,13 @@ export const leaveRoom = async (req: Request, res: Response<GameResponse>) => {
     const roomId = req.params.roomId as string;
     const { player, isForfeit } = req.body;
     
-    let game = gameCache[roomId];
-    if (!game) {
-        const dbDoc = await GameModel.findOne({ roomId });
-        if (dbDoc) {
-            game = dbDoc.toObject() as GameState;
-            gameCache[roomId] = game;
-        }
-    }
-
-    if (!game) {
+    const dbDoc = await GameModel.findOne({ roomId });
+    if (!dbDoc) {
       return res.status(404).json({ success: false, message: "Room not found" });
     }
+
+    const game = dbDoc.toObject() as GameState;
+    gameCache[roomId] = game; // Refresh local cache
 
     // 🧹 Explicitly nullify to ensure Mongoose/JSON transmission clears the slot
     if (player === 'X') game.players.X = undefined;
@@ -288,15 +265,13 @@ export const leaveRoom = async (req: Request, res: Response<GameResponse>) => {
 // Internal utility to keep Game Actions fast
 export const getGameStateFromCache = async (roomId: string) => {
     await connectDB();
-    let game = gameCache[roomId];
-    if (!game) {
-        const dbDoc = await GameModel.findOne({ roomId });
-        if (dbDoc) {
-            game = dbDoc.toObject() as GameState;
-            gameCache[roomId] = game;
-        }
+    const dbDoc = await GameModel.findOne({ roomId });
+    if (dbDoc) {
+        const game = dbDoc.toObject() as GameState;
+        gameCache[roomId] = game;
+        return game;
     }
-    return game;
+    return null;
 };
 
 export const updateGameStateSync = async (roomId: string, newState: GameState) => {
