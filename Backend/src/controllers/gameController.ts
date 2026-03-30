@@ -44,7 +44,14 @@ export const makeMove = async (req: Request, res: Response<GameResponse>) => {
     }
 
     if (game.status !== 'PLAYING') {
-      return res.status(400).json({ success: false, message: "Game is not active" });
+      // 🛡️ STATUS AUTO-HEALER: If both players are present but the room is stuck in WAITING (e.g. after a session crash/reset)
+      // we allow the move to proceed if it's the correct turn, and we force the status to PLAYING.
+      if (game.players.X && game.players.O && (game.status === 'WAITING' || game.status === 'WON' || game.status === 'DRAW')) {
+          console.log(`📡 Auto-Heal: Room ${roomId} was ${game.status}, but both players are here. Activating...`);
+          game.status = 'PLAYING';
+      } else {
+          return res.status(400).json({ success: false, message: "Game is not active" });
+      }
     }
 
     if (game.currentTurn !== player) {

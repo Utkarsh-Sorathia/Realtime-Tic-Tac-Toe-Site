@@ -79,10 +79,21 @@ export const joinRoom = async (req: Request, res: Response<GameResponse>) => {
         return res.status(404).json({ success: false, message: "Room not found" });
       }
 
-      if (game.players.X === playerName || game.players.O === playerName) {
-        const assignedSide = game.players.X === playerName ? 'X' : 'O';
+      // 🛡️ RE-JOIN LOGIC: Case-insensitive name matching for resilient session re-entry
+      const playerX = game.players.X?.toLowerCase();
+      const playerO = game.players.O?.toLowerCase();
+      const seeker = playerName?.toLowerCase();
+
+      if (seeker && (playerX === seeker || playerO === seeker)) {
+        const assignedSide = playerX === seeker ? 'X' : 'O';
         
-        // 🛡️ RE-SYNC: If both players are present but status is stuck in WAITING (e.g. after a refresh/leave desync)
+        // 🛡️ RE-SYNC Name: Ensure the name is updated to the latest requested version (handles casing/refresh)
+        if (playerName && game.players[assignedSide] !== playerName) {
+            game.players[assignedSide] = playerName;
+            await GameModel.findOneAndUpdate({ roomId }, { [`players.${assignedSide}`]: playerName });
+        }
+
+        // 🔄 RE-SYNC Status: If both players are present but status is stuck in WAITING (after a refresh/leave desync)
         if (game.players.X && game.players.O && game.status === 'WAITING') {
             game.status = 'PLAYING';
             await GameModel.findOneAndUpdate({ roomId }, { status: 'PLAYING' });
@@ -98,15 +109,27 @@ export const joinRoom = async (req: Request, res: Response<GameResponse>) => {
       }
 
       const assignedPlayer: Player = game.players.X ? 'O' : 'X';
-      game.players[assignedPlayer] = playerName || `Player ${assignedPlayer === 'X' ? '1' : '2'}`;
-
+      const assignedName = playerName || `Player ${assignedPlayer === 'X' ? '1' : '2'}`;
+      
+      // 🛡️ ATOMIC UPDATE: Ensure both the side assignment and status are set together
+      game.players[assignedPlayer] = assignedName;
       if (game.players.X && game.players.O) {
           game.status = 'PLAYING';
       }
 
-      await GameModel.findOneAndUpdate({ roomId }, game);
-      gameCache[roomId] = game;
+      // Re-save to DB with explicit atomic commit
+      await GameModel.findOneAndUpdate(
+          { roomId }, 
+          { 
+              $set: { 
+                  [`players.${assignedPlayer}`]: assignedName,
+                  status: game.status 
+              } 
+          },
+          { new: true }
+      );
 
+      gameCache[roomId] = game;
       await broadcastGameUpdate(roomId, game);
  
       res.json({ success: true, message: "Joined successfully", game, assignedSide: assignedPlayer });
@@ -206,6 +229,7 @@ export const leaveRoom = async (req: Request, res: Response<GameResponse>) => {
       return res.status(404).json({ success: false, message: "Room not found" });
     }
 
+    // 🧹 Explicitly nullify to ensure Mongoose/JSON transmission clears the slot
     if (player === 'X') game.players.X = undefined;
     if (player === 'O') game.players.O = undefined;
 
@@ -226,7 +250,25 @@ export const leaveRoom = async (req: Request, res: Response<GameResponse>) => {
         game.winner = null;
         game.winningLine = null;
         
-        await GameModel.findOneAndUpdate({ roomId }, game);
+        // 🏆 ATOMIC SCORE COMMIT: Ensure the board reset and score increments are saved precisely
+        // 🏆 ATOMIC SCORE COMMIT: Explicitly update the players object to clear slots in DB
+        await GameModel.findOneAndUpdate(
+            { roomId }, 
+            { 
+                $set: { 
+                    status: 'WAITING',
+                    board: game.board,
+                    winner: null,
+                    winningLine: null,
+                    scores: game.scores,
+                    players: {
+                        X: game.players.X || null, // Ensure DB clearing
+                        O: game.players.O || null
+                    }
+                } 
+            }
+        );
+
         gameCache[roomId] = game;
         await broadcastGameUpdate(roomId, game);
     }
@@ -255,6 +297,22 @@ export const getGameStateFromCache = async (roomId: string) => {
 export const updateGameStateSync = async (roomId: string, newState: GameState) => {
     await connectDB();
     gameCache[roomId] = newState;
-    await GameModel.findOneAndUpdate({ roomId }, newState);
+    
+    // 🛡️ ATOMIC SYNC: Explicitly update all fields to bypass Mongoose's deep change detector
+    await GameModel.findOneAndUpdate(
+        { roomId }, 
+        { 
+            $set: { 
+                board: newState.board,
+                currentTurn: newState.currentTurn,
+                status: newState.status,
+                winner: newState.winner,
+                winningLine: newState.winningLine,
+                scores: newState.scores,
+                players: newState.players
+            } 
+        }
+    );
+    
     await broadcastGameUpdate(roomId, newState);
 };

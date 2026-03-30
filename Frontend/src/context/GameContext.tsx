@@ -54,22 +54,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     gameStateRef.current = gameState;
   }, [gameState]);
 
-  /**
-   * 🔄 ON MOUNT: Check for an existing session in local storage.
-   */
-  useEffect(() => {
-    const savedRoomId = localStorage.getItem(STORAGE_KEY_ROOM);
-    const savedSide = localStorage.getItem(STORAGE_KEY_SIDE) as Player | null;
-    const savedName = localStorage.getItem(STORAGE_KEY_NAME);
-
-    if (savedName) setPlayerNameState(savedName);
-    
-    if (savedRoomId && savedSide) {
-      console.log(`🏠 Restoring session: Room ${savedRoomId} as Side ${savedSide}`);
-      setRoomId(savedRoomId);
-      setPlayerSide(savedSide);
-    }
-  }, []);
 
   /**
    * Internal setter that also persists to localStorage
@@ -189,10 +173,10 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const joinGame = async (id: string, side?: Player) => {
+  const joinGame = async (id: string, side?: Player, nameOverride?: string) => {
     setIsSearching(true);
     try {
-      const res = await roomService.joinRoom(id, playerName);
+      const res = await roomService.joinRoom(id, nameOverride || playerName);
       if (res.success && res.game) {
         setGameState(res.game);
         setRoomId(id);
@@ -278,6 +262,24 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateGameLocally = (newState: GameState) => {
       setGameState(newState);
   };
+
+  /**
+   * 🔄 SESSION RESTORATION: Check for an existing session and perform a FULL join to sync names.
+   * Moved down here so that joinGame and other dependencies are fully initialized.
+   */
+  useEffect(() => {
+    const savedRoomId = localStorage.getItem(STORAGE_KEY_ROOM);
+    const savedSide = localStorage.getItem(STORAGE_KEY_SIDE) as Player | null;
+    const savedName = localStorage.getItem(STORAGE_KEY_NAME);
+
+    if (savedName) setPlayerNameState(savedName);
+    
+    if (savedRoomId) {
+      console.log(`🏠 Restoring session: Room ${savedRoomId} with name ${savedName}`);
+      // Perform a full join to ensure the backend has the name and we have the latest side
+      joinGame(savedRoomId, savedSide || undefined, savedName || undefined);
+    }
+  }, []);
 
   return (
     <GameContext.Provider value={{ 
