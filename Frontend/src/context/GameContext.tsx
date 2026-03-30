@@ -84,6 +84,22 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         (updatedGame: GameState) => {
           console.log('⚡ Real-time update:', updatedGame);
           setGameState(updatedGame);
+
+          // 🛡️ SYNC FIX: If we receive an update and the opponent is officially NULL,
+          // it means they left normally via the menu. Clear any stale disconnect alerts.
+          const opponentSide = playerSide === 'X' ? 'O' : 'X';
+          if (!updatedGame.players[opponentSide]) {
+              setOpponentDisconnected(false);
+              setOpponentForfeit(false);
+              if (disconnectGraceRef.current) {
+                  clearTimeout(disconnectGraceRef.current);
+                  disconnectGraceRef.current = null;
+              }
+              if (evictionTimerRef.current) {
+                  clearTimeout(evictionTimerRef.current);
+                  evictionTimerRef.current = null;
+              }
+          }
         },
         () => {
           // 👻 Opponent's socket dropped — start grace period check

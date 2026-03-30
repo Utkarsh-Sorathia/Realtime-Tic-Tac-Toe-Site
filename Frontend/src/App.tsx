@@ -4,8 +4,9 @@ import { useGame } from './context/GameContext';
 import { Loader2 } from 'lucide-react';
 
 // Lazy loading core components for performance
+// Self-healing lazy loading: If a chunk fails (due to a NEW deployment), force a page reload
 const LandingPage = lazy(() => import('./features/game/LandingPage'));
-const GameRoom = lazy(() => import('./features/game/GameRoom'));
+const GameRoom = lazy(() => import('./features/game/GameRoom').catch(() => { window.location.reload(); return { default: () => null } }));
 const GameRoomPvE = lazy(() => import('./features/game/GameRoomPvE'));
 const NotFound = lazy(() => import('./features/error/NotFound'));
 
