@@ -19,9 +19,10 @@ interface GameContextType {
   opponentForfeit: boolean;
   setPlayerName: (name: string) => void;
   createGame: () => Promise<void>;
-  joinGame: (id: string, side?: Player) => Promise<void>;
+  joinGame: (id: string, side?: Player, nameOverride?: string) => Promise<void>;
   joinMatchmaking: () => Promise<void>;
   updateGameLocally: (newState: GameState) => void;
+  makeMove: (index: number) => Promise<void>;
   leaveRoom: () => Promise<void>;
   refreshRoom: () => Promise<void>;
   pusherChannel: any | null; // The low-level Pusher channel for custom events
@@ -242,6 +243,33 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const makeMove = async (index: number) => {
+    if (!roomId || !playerSide || !gameState || gameState.status !== 'PLAYING' || opponentDisconnected) return;
+    if (gameState.currentTurn !== playerSide || gameState.board[index]) return;
+
+    // 🏎️ OPTIMISTIC UPDATE: Update the UI instantly for the 'Elite' zero-latency feel
+    const previousState = { ...gameState };
+    const optimisticState = { ...gameState, board: [...gameState.board] };
+    optimisticState.board[index] = playerSide;
+    optimisticState.currentTurn = playerSide === 'X' ? 'O' : 'X';
+    
+    setGameState(optimisticState);
+
+    try {
+        const res = await roomService.makeMove(roomId, index, playerSide);
+        if (!res.success) {
+            // Rollback if the server rejected it
+            setGameState(previousState);
+        } else if (res.game) {
+            // Confirm the server's authoritative version
+            setGameState(res.game);
+        }
+    } catch (err) {
+        console.error("Optimistic move failed:", err);
+        setGameState(previousState);
+    }
+  };
+
   const leaveRoom = async () => {
     if (roomId && playerSide) {
         try {
@@ -321,6 +349,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         joinGame,
         joinMatchmaking,
         updateGameLocally,
+        makeMove,
         leaveRoom,
         refreshRoom,
         isSearchingMatch,

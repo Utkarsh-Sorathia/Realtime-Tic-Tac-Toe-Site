@@ -45,7 +45,7 @@ const BoardCell = React.memo(({
  * Premium Game Room UI with a session-based scorecard.
  */
 const GameRoom: React.FC = () => {
-    const { gameState, playerSide, roomId, leaveRoom, refreshRoom, opponentDisconnected, opponentForfeit } = useGame();
+    const { gameState, playerSide, roomId, leaveRoom, refreshRoom, opponentDisconnected, opponentForfeit, makeMove } = useGame();
     const [isActionLoading, setIsActionLoading] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
 
@@ -80,22 +80,8 @@ const GameRoom: React.FC = () => {
     if (!gameState || !roomId || !playerSide) return null;
 
     const handleCellClick = async (index: number) => {
-        if (gameState.currentTurn !== playerSide || 
-            gameState.board[index] !== null || 
-            gameState.status !== 'PLAYING' ||
-            isActionLoading ||
-            opponentDisconnected) {  // 🚫 Block moves during opponent grace period
-            return;
-        }
-
-        setIsActionLoading(true);
-        try {
-            await roomService.makeMove(roomId, index, playerSide);
-        } catch (err) {
-            console.error('Failed to make move:', err);
-        } finally {
-            setIsActionLoading(false);
-        }
+        // All validation and optimistic update logic is now inside GameContext's makeMove
+        await makeMove(index);
     };
 
     const handleRematch = async () => {
