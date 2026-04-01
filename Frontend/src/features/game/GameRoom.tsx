@@ -140,6 +140,7 @@ const GameRoom: React.FC = () => {
         const shadowColor = gameState.winner === 'X' ? 'shadow-[0_0_8px_var(--primary-glow)]' : 'shadow-[0_0_8px_var(--secondary-glow)]';
         return (
             <motion.div 
+                key={line}
                 initial={{ scaleX: 0, opacity: 0 }}
                 animate={{ scaleX: 1, opacity: 1 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
@@ -152,8 +153,8 @@ const GameRoom: React.FC = () => {
         <div className="h-dvh bg-(--site-bg) text-white flex flex-col items-center p-2 md:p-6 relative overflow-hidden font-sans">
             {/* Animated Background Orbs (Optimized for Mobile) */}
             <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-30 overflow-hidden">
-                <div className="absolute -top-20 -left-20 w-64 md:w-96 h-64 md:h-96 bg-(--primary-cyan)/20 rounded-full blur-[60px] md:blur-[120px] animate-pulse will-change-[filter,transform]" />
-                <div className="absolute -bottom-20 -right-20 w-64 md:w-96 h-64 md:h-96 bg-(--secondary-pink)/20 rounded-full blur-[60px] md:blur-[120px] animate-pulse will-change-[filter,transform]" />
+                <div className="absolute -top-20 -left-20 w-64 md:w-96 h-64 md:h-96 bg-(--primary-cyan)/20 rounded-full blur-[60px] md:blur-[80px] animate-pulse" />
+                <div className="absolute -bottom-20 -right-20 w-64 md:w-96 h-64 md:h-96 bg-(--secondary-pink)/20 rounded-full blur-[60px] md:blur-[80px] animate-pulse" />
             </div>
 
             <motion.div 
@@ -281,7 +282,7 @@ const GameRoom: React.FC = () => {
                 </div>
 
                 {/* The Board */}
-                <div className="w-full max-w-[400px] mx-auto grid grid-cols-3 gap-2 md:gap-4 bg-(--surface-bg) backdrop-blur-3xl border border-(--surface-border) p-3 md:p-6 rounded-4xl md:rounded-[3.5rem] shadow-2xl aspect-square mb-4 md:mb-10 relative group/board shrink pointer-events-auto">
+                <div className="w-full max-w-[400px] mx-auto grid grid-cols-3 gap-2 md:gap-4 bg-(--surface-bg) backdrop-blur-2xl border border-(--surface-border) p-3 md:p-6 rounded-4xl md:rounded-[3.5rem] shadow-2xl aspect-square mb-4 md:mb-10 relative group/board shrink pointer-events-auto">
                     <AnimatePresence>{renderWinningLine()}</AnimatePresence>
 
                     {gameState.board.map((cell, idx) => (

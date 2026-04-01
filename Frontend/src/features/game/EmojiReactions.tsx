@@ -46,7 +46,7 @@ const EmojiReactions: React.FC = () => {
     // Listen for incoming emoji reactions
     pusherChannel.bind('emoji-reaction', (data: { playerName: string; emoji: string }) => {
       const newReaction = {
-        id: Date.now(),
+        id: Date.now() + Math.random(),
         emoji: data.emoji,
         sender: data.playerName
       };

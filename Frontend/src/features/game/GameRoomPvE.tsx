@@ -129,6 +129,7 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
         const shadowColor = winner === 'X' ? 'shadow-[0_0_5px_rgba(34,211,238,0.2)]' : 'shadow-[0_0_5px_rgba(168,85,247,0.2)]';
         return (
             <motion.div 
+                key={line}
                 initial={{ scaleX: 0, opacity: 0 }}
                 animate={{ scaleX: 1, opacity: 1 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
@@ -141,8 +142,8 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
         <div className="h-dvh bg-(--site-bg) text-white flex flex-col items-center justify-center p-2 md:p-4 relative overflow-hidden font-sans">
             {/* Animated Background Orbs (Optimized for Mobile) */}
             <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-30">
-                <div className="absolute top-10 left-10 w-64 md:w-96 h-64 md:h-96 bg-(--accent-purple)/10 rounded-full blur-[60px] md:blur-[100px] animate-pulse will-change-[filter,transform]" />
-                <div className="absolute bottom-10 right-10 w-64 md:w-96 h-64 md:h-96 bg-(--primary-cyan)/10 rounded-full blur-[60px] md:blur-[100px] animate-pulse will-change-[filter,transform]" />
+                <div className="absolute top-10 left-10 w-64 md:w-96 h-64 md:h-96 bg-(--accent-purple)/10 rounded-full blur-[60px] md:blur-[80px] animate-pulse" />
+                <div className="absolute bottom-10 right-10 w-64 md:w-96 h-64 md:h-96 bg-(--primary-cyan)/10 rounded-full blur-[60px] md:blur-[80px] animate-pulse" />
             </div>
 
             <motion.div 
@@ -222,7 +223,7 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
                 </div>
 
                 {/* The Board */}
-                <div className="w-full max-w-[400px] mx-auto grid grid-cols-3 gap-2 md:gap-4 bg-(--surface-bg) backdrop-blur-3xl border border-(--surface-border) p-3 md:p-6 rounded-4xl md:rounded-[3.5rem] shadow-2xl aspect-square mb-4 md:mb-10 relative group/board shrink pointer-events-auto">
+                <div className="w-full max-w-[400px] mx-auto grid grid-cols-3 gap-2 md:gap-4 bg-(--surface-bg) backdrop-blur-2xl border border-(--surface-border) p-3 md:p-6 rounded-4xl md:rounded-[3.5rem] shadow-2xl aspect-square mb-4 md:mb-10 relative group/board shrink pointer-events-auto">
                     <AnimatePresence>{renderWinningLine()}</AnimatePresence>
 
                     {board.map((cell, idx) => (
