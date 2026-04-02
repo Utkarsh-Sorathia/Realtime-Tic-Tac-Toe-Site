@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, RefreshCw, LogOut, Play, ChevronLeft } from 'lucide-react';
+import { Trophy, RefreshCw, LogOut, Play, ChevronLeft, Zap, Flame, Crown, Clock, Shield } from 'lucide-react';
 import { useGamePvE } from '../../hooks/useGamePvE';
 import confetti from 'canvas-confetti';
 import type { Difficulty } from './utils/aiLogic';
@@ -16,30 +16,43 @@ const BoardCell = React.memo(({
     idx, 
     cell, 
     onClick, 
-    canMove 
+    canMove,
+    streak 
 }: { 
     idx: number, 
     cell: string | null, 
     onClick: (i: number) => void, 
-    canMove: boolean 
-}) => (
-    <motion.button
-        onClick={() => onClick(idx)}
-        aria-label={`Mark square ${idx + 1}`}
-        whileHover={!cell && canMove ? { scale: 1.05, background: "rgba(255,255,255,0.08)" } : {}}
-        whileTap={!cell && canMove ? { scale: 0.95 } : {}}
-        className={`aspect-square rounded-2xl md:rounded-4xl border-2 border-white/5 bg-white/5 flex items-center justify-center text-5xl md:text-6xl font-black transition-all relative z-10 overflow-hidden ${
-            !cell && canMove ? 'cursor-pointer hover:border-white/20' : 'cursor-default'
-        }`}
-    >
-        {cell === 'X' && (
-            <motion.span initial={{ scale:0, rotate:-45 }} animate={{ scale:1, rotate:0 }} className="text-(--primary-cyan) drop-shadow-[0_0_20px_var(--primary-glow)]">X</motion.span>
-        )}
-        {cell === 'O' && (
-            <motion.span initial={{ scale:0, scaleX:0.5 }} animate={{ scale:1, scaleX:1 }} className="text-(--accent-purple) drop-shadow-[0_0_20px_var(--accent-purple)]">O</motion.span>
-        )}
-    </motion.button>
-));
+    canMove: boolean,
+    streak: number
+}) => {
+    const getPlayerXIcon = () => {
+        if (streak >= 10) return <Crown className="w-8 h-8 md:w-12 md:h-12 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]" />;
+        if (streak >= 5) return <Flame className="w-8 h-8 md:w-12 md:h-12 text-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.6)]" />;
+        if (streak >= 3) return <Zap className="w-8 h-8 md:w-12 md:h-12 text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.6)]" />;
+        return <span className="text-(--primary-cyan) drop-shadow-[0_0_20px_var(--primary-glow)]">X</span>;
+    };
+
+    return (
+        <motion.button
+            onClick={() => onClick(idx)}
+            aria-label={`Mark square ${idx + 1}`}
+            whileHover={!cell && canMove ? { scale: 1.05, background: "rgba(255,255,255,0.08)" } : {}}
+            whileTap={!cell && canMove ? { scale: 0.95 } : {}}
+            className={`aspect-square rounded-2xl md:rounded-4xl border-2 border-white/5 bg-white/5 flex items-center justify-center text-5xl md:text-6xl font-black transition-all relative z-10 overflow-hidden ${
+                !cell && canMove ? 'cursor-pointer hover:border-white/20' : 'cursor-default'
+            }`}
+        >
+            {cell === 'X' && (
+                <motion.div initial={{ scale: 0, rotate: -45 }} animate={{ scale: 1, rotate: 0 }}>
+                    {getPlayerXIcon()}
+                </motion.div>
+            )}
+            {cell === 'O' && (
+                <motion.span initial={{ scale: 0, scaleX: 0.5 }} animate={{ scale: 1, scaleX: 1 }} className="text-(--accent-purple) drop-shadow-[0_0_20px_var(--accent-purple)]">O</motion.span>
+            )}
+        </motion.button>
+    );
+});
 
 const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
     // We pass 'X' as human player side. They always start in this simple implementation.
@@ -54,7 +67,12 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
         setDifficulty, 
         makeMove, 
         resetGame, 
-        isAiThinking 
+        isAiThinking,
+        streak,
+        bestStreak,
+        timeLeft,
+        maxTime,
+        isBlitzActive
     } = useGamePvE(humanSide);
 
     // Confetti effect on victory
@@ -70,13 +88,21 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
     }, [status, winner]);
 
     const [scores, setScores] = useState<Record<Difficulty, { X: number; O: number; DRAW: number; }>>(() => {
-        const savedScores = sessionStorage.getItem('pve_scores_v2');
-        if (savedScores) return JSON.parse(savedScores);
-        return {
+        const defaultScores = {
             EASY: { X: 0, O: 0, DRAW: 0 },
             MEDIUM: { X: 0, O: 0, DRAW: 0 },
-            HARD: { X: 0, O: 0, DRAW: 0 }
+            HARD: { X: 0, O: 0, DRAW: 0 },
+            EXPERT: { X: 0, O: 0, DRAW: 0 }
         };
+        const savedScores = sessionStorage.getItem('pve_scores_v2');
+        if (savedScores) {
+            try {
+                return { ...defaultScores, ...JSON.parse(savedScores) };
+            } catch (e) {
+                return defaultScores;
+            }
+        }
+        return defaultScores;
     });
 
     React.useEffect(() => {
@@ -177,18 +203,19 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
                         <div className="flex flex-col w-full">
                             <span className="text-[11px] md:text-[12px] font-black uppercase tracking-[0.4em] text-slate-500 mb-3 md:mb-3 text-center">AI Difficulty</span>
                             <div className="flex bg-slate-950/50 rounded-lg overflow-hidden border border-white/5 p-1 w-full gap-1">
-                                {(['EASY', 'MEDIUM', 'HARD'] as Difficulty[]).map(level => (
+                                {(['EASY', 'MEDIUM', 'HARD', 'EXPERT'] as Difficulty[]).map(level => (
                                     <button
                                         key={level}
                                         onClick={() => setDifficulty(level)}
                                         disabled={status === 'PLAYING' && board.some(cell => cell !== null)}
-                                        className={`flex-1 py-2 md:py-2.5 text-[11px] md:text-[12px] font-black tracking-widest uppercase transition-all rounded-md ${
+                                        className={`flex-1 py-2 md:py-2.5 text-[10px] md:text-[11px] font-black tracking-widest uppercase transition-all rounded-md flex items-center justify-center gap-2 ${
                                             difficulty === level 
                                                 ? 'bg-purple-500/20 text-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.3)]' 
                                                 : 'text-slate-600 hover:text-slate-400 hover:bg-white/5'
                                         }`}
                                     >
                                         {level}
+                                        {level !== 'EASY' && <Clock size={10} className={difficulty === level ? "opacity-100" : "opacity-30"} />}
                                     </button>
                                 ))}
                             </div>
@@ -199,28 +226,62 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
                 {/* Scoreboard */}
                 <div className="flex items-center gap-2 md:gap-4 mb-3 md:mb-8 shrink-0 px-2 md:px-0">
                     <div className={`flex-1 bg-(--surface-bg) border-2 rounded-2xl md:rounded-4xl p-3 md:p-5 flex flex-col items-center relative transition-all duration-500 ${currentTurn === 'X' && status === 'PLAYING' ? 'border-(--primary-cyan)/40 shadow-[0_0_20px_var(--primary-glow)] scale-105' : 'border-white/5'}`}>
-                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-(--primary-cyan)/60 mb-1 md:mb-2">YOU</span>
+                        <div className="flex items-center gap-1.5 mb-1 md:mb-2">
+                             <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-(--primary-cyan)/60">YOU</span>
+                             {streak > 0 && <span className="text-[8px] font-black text-white bg-(--primary-cyan) px-1.5 rounded-sm animate-pulse">STREAK {streak}</span>}
+                        </div>
                         <div className="flex items-center gap-3">
                             <span className="text-3xl md:text-5xl font-black text-white tracking-tighter">{currentScores.X}</span>
                         </div>
-                        {currentTurn === 'X' && status === 'PLAYING' && <motion.div layoutId="turn-pve" className="absolute -bottom-1 w-12 md:w-16 h-1.5 bg-(--primary-cyan) rounded-full shadow-[0_0_5px_var(--primary-glow)]" />}
+                        {currentTurn === 'X' && status === 'PLAYING' && <motion.div layoutId="turn-pve" className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-12 md:w-16 h-1.5 bg-(--primary-cyan) rounded-full shadow-[0_0_5px_var(--primary-glow)]" />}
                     </div>
                     
                     <div className="flex flex-col items-center gap-1">
                         <div className="text-lg md:text-2xl font-black text-slate-700 italic tracking-tighter">VS</div>
                         <div className="bg-white/5 px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-white/5">
-                            <span className="text-[7px] md:text-[9px] font-black text-slate-500 uppercase tracking-widest">DRAWS: {currentScores.DRAW}</span>
+                            <span className="text-[7px] md:text-[9px] font-black text-slate-500 uppercase tracking-widest">BEST: {bestStreak}</span>
                         </div>
                     </div>
 
-                    <div className={`flex-1 bg-(--surface-bg) border-2 rounded-2xl md:rounded-4xl p-3 md:p-5 flex flex-col items-center relative transition-all duration-500 ${currentTurn === 'O' && status === 'PLAYING' ? 'border-(--accent-purple)/40 shadow-[0_0_20px_var(--accent-purple)] scale-105' : 'border-white/5'}`}>
-                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-(--accent-purple)/60 mb-1 md:mb-2">ELITE AI</span>
+                    <div className={`flex-1 bg-(--surface-bg) border-2 rounded-2xl md:rounded-4xl p-3 md:p-5 flex flex-col items-center relative transition-all duration-500 ${currentTurn === 'O' && status === 'PLAYING' ? (difficulty === 'EXPERT' ? 'border-red-500/40 shadow-[0_0_20px_rgba(239,68,68,0.4)] scale-105' : 'border-(--accent-purple)/40 shadow-[0_0_20px_var(--accent-purple)] scale-105') : 'border-white/5'}`}>
+                        <div className="flex items-center gap-1.5 mb-1 md:mb-2">
+                             <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-(--accent-purple)/60">{difficulty === 'EXPERT' ? 'GOD ENGINE' : 'ELITE AI'}</span>
+                             {difficulty === 'EXPERT' && (
+                                <div className="flex items-center gap-1 bg-red-500/20 px-1.5 rounded-sm">
+                                    <Shield size={8} className="text-red-400" />
+                                    <span className="text-[8px] font-black text-red-100 uppercase">Master</span>
+                                </div>
+                             )}
+                        </div>
                         <div className="flex items-center gap-3">
                             <span className="text-3xl md:text-5xl font-black text-white tracking-tighter">{currentScores.O}</span>
                         </div>
-                        {currentTurn === 'O' && status === 'PLAYING' && <motion.div layoutId="turn-pve" className="absolute -bottom-1 w-12 md:w-16 h-1.5 bg-(--accent-purple) rounded-full shadow-[0_0_15px_var(--accent-purple)]" />}
+                        {currentTurn === 'O' && status === 'PLAYING' && <motion.div layoutId="turn-pve" className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-12 md:w-16 h-1.5 rounded-full ${difficulty === 'EXPERT' ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)]' : 'bg-(--accent-purple) shadow-[0_0_15px_var(--accent-purple)]'}`} />}
                     </div>
                 </div>
+
+                {/* Blitz Timer Bar */}
+                {isBlitzActive && status === 'PLAYING' && (
+                    <div className="w-full max-w-[400px] mx-auto mb-3 md:mb-4 px-2">
+                        <div className="flex justify-between items-center mb-1.5">
+                            <div className="flex items-center gap-2">
+                                <Clock className={`w-3 h-3 ${timeLeft < 2 ? 'text-red-500 animate-pulse' : 'text-(--primary-cyan)'}`} />
+                                <span className={`text-[10px] font-black tracking-widest uppercase ${timeLeft < 2 ? 'text-red-500' : 'text-slate-500'}`}>Blitz Protocol</span>
+                            </div>
+                            <span className={`text-[10px] font-black ${timeLeft < 2 ? 'text-red-500' : 'text-white'}`}>{timeLeft.toFixed(1)}s</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-white/5">
+                            <motion.div 
+                                initial={false}
+                                animate={{ 
+                                    width: `${(timeLeft / maxTime) * 100}%`,
+                                    backgroundColor: timeLeft < (maxTime * 0.3) ? '#ef4444' : '#22d3ee'
+                                }}
+                                className="h-full shadow-[0_0_10px_currentColor]"
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* The Board */}
                 <div className="w-full max-w-[400px] mx-auto grid grid-cols-3 gap-2 md:gap-4 bg-(--surface-bg) backdrop-blur-2xl border border-(--surface-border) p-3 md:p-6 rounded-4xl md:rounded-[3.5rem] shadow-2xl aspect-square mb-4 md:mb-10 relative group/board shrink pointer-events-auto">
@@ -233,6 +294,7 @@ const GameRoomPvE: React.FC<GameRoomPvEProps> = ({ onExit }) => {
                             cell={cell}
                             canMove={canMove}
                             onClick={handleCellClick}
+                            streak={streak}
                         />
                     ))}
                     

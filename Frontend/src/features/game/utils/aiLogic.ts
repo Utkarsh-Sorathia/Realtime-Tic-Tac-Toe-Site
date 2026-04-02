@@ -1,6 +1,6 @@
 export type Player = 'X' | 'O';
 export type BoardState = (Player | null)[];
-export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
+export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD' | 'EXPERT';
 
 const WINNING_COMBINATIONS = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
@@ -76,12 +76,12 @@ function minimax(
 
 /**
  * Calculates the best move for the AI layer. 
- * Supports 3 difficulties via probability layering over the minimax engine.
+ * Supports 4 levels of difficulty via probability layering over the minimax engine.
  */
 export function getBestMove(
   board: BoardState,
   aiPlayer: Player,
-  difficulty: Difficulty = 'HARD'
+  difficulty: Difficulty = 'EXPERT'
 ): number {
   const humanPlayer: Player = aiPlayer === 'X' ? 'O' : 'X';
   const emptySpots = board.map((cell, index) => (cell === null ? index : null)).filter((val) => val !== null) as number[];
@@ -100,44 +100,54 @@ export function getBestMove(
     return -1;
   };
 
-  // -- DIFFICULTY LAYER: EASY --
-  // 50% chance to make a completely random move (It makes silly mistakes, but occasionally plays optimally)
+  /**
+   * Selects a strategic but non-optimal move from the list of empty spots.
+   * Prioritizes Center -> Corners -> Edges slightly even for "random" moves to maintain an 'Elite' feel.
+   */
+  const getRandomMove = (): number => {
+     const strategicRandom = [4, 0, 2, 6, 8, 1, 3, 5, 7];
+     for (const spot of strategicRandom) {
+         if (emptySpots.includes(spot) && Math.random() < 0.6) return spot;
+     }
+     return emptySpots[Math.floor(Math.random() * emptySpots.length)];
+  };
+
+  // -- DIFFICULTY LAYER: EASY (50% Choice) --
   if (difficulty === 'EASY') {
-    if (Math.random() < 0.5) {
-      return emptySpots[Math.floor(Math.random() * emptySpots.length)];
-    }
+    if (Math.random() < 0.5) return getRandomMove();
   }
 
   // -- DIFFICULTY LAYER: MEDIUM (The Mistake-Prone Pro) --
   if (difficulty === 'MEDIUM') {
-    // 1. Never miss an obvious win
     const winningMove = findImmediateMove(aiPlayer);
     if (winningMove !== -1) return winningMove;
 
-    // 2. Never miss an obvious block
     const blockingMove = findImmediateMove(humanPlayer);
     if (blockingMove !== -1) return blockingMove;
 
-    // 3. But it fails to see "Forks" (long-term traps) 30% of the time and just plays randomly
-    if (Math.random() < 0.3) {
-      return emptySpots[Math.floor(Math.random() * emptySpots.length)];
-    }
+    if (Math.random() < 0.3) return getRandomMove();
   }
 
-  // -- DIFFICULTY LAYER: HARD (The Unbeatable God Engine) --
-  // We use Minimax, but we explicitly test the most strategic spots first.
-  // If multiple spots return a "0" (Draw) score, the first one tested is chosen.
-  // Center (4) -> Corners (0, 2, 6, 8) -> Edges (1, 3, 5, 7)
-  const strategicOrder = [4, 0, 2, 6, 8, 1, 3, 5, 7];
+  // -- DIFFICULTY LAYER: HARD (The 90% Pro) --
+  if (difficulty === 'HARD') {
+      const winningMove = findImmediateMove(aiPlayer);
+      if (winningMove !== -1) return winningMove;
   
+      const blockingMove = findImmediateMove(humanPlayer);
+      if (blockingMove !== -1) return blockingMove;
+
+      // 10% chance to make a strategic mistake by not calculating the deep minimax fork
+      if (Math.random() < 0.1) return getRandomMove();
+  }
+
+  // -- DIFFICULTY LAYER: EXPERT (The Unbeatable Engine) --
+  // 100% Minimax - No randomness.
+  const strategicOrder = [4, 0, 2, 6, 8, 1, 3, 5, 7];
   let bestScore = -Infinity;
   let bestMove = -1;
-
-  // Clone the board to maintain pure immutability for the React state
   const boardCopy = [...board];
 
   for (const i of strategicOrder) {
-    // Skip spots that are not empty
     if (!emptySpots.includes(i)) continue;
 
     boardCopy[i] = aiPlayer;
@@ -150,6 +160,5 @@ export function getBestMove(
     }
   }
 
-  // Safety fallback
   return bestMove !== -1 ? bestMove : emptySpots[0];
 }

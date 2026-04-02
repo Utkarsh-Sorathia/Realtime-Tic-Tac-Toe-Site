@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { isBoardFull, getBestMove, checkWinDetails } from '../features/game/utils/aiLogic';
 import type { Player, BoardState, Difficulty } from '../features/game/utils/aiLogic';
 
@@ -15,12 +15,16 @@ interface UseGamePvEReturn {
     makeMove: (index: number) => void;
     resetGame: () => void;
     isAiThinking: boolean;
+    // New Blitz & Streak State
+    streak: number;
+    bestStreak: number;
+    timeLeft: number;
+    maxTime: number;
+    isBlitzActive: boolean;
 }
 
 /**
  * Custom hook to handle the entirely localized Player vs Environment (AI) game state.
- * Ensures zero-latency for human moves and adds a slight simulated delay for AI moves
- * to make the game feel natural.
  */
 export function useGamePvE(humanPlayerSide: Player = 'X'): UseGamePvEReturn {
     const [board, setBoard] = useState<BoardState>(() => {
@@ -41,13 +45,29 @@ export function useGamePvE(humanPlayerSide: Player = 'X'): UseGamePvEReturn {
         return saved ? JSON.parse(saved) : null;
     });
     const [difficulty, setDifficulty] = useState<Difficulty>(() => 
-        (sessionStorage.getItem('pve_difficulty') as Difficulty) || 'HARD'
+        (sessionStorage.getItem('pve_difficulty') as Difficulty) || 'MEDIUM'
     );
+
+    // Blitz & Streak Persistence
+    const [streak, setStreak] = useState(() => Number(localStorage.getItem(`pve_streak_${difficulty}`) || 0));
+    const [bestStreak, setBestStreak] = useState(() => Number(localStorage.getItem(`pve_best_${difficulty}`) || 0));
+    
+    const isBlitzActive = difficulty !== 'EASY';
+    const maxTime = difficulty === 'EXPERT' ? 3 : difficulty === 'HARD' ? 5 : 8; // Seconds
+    const [timeLeft, setTimeLeft] = useState(maxTime);
     const [isAiThinking, setIsAiThinking] = useState(false);
 
     const aiPlayerSide: Player = humanPlayerSide === 'X' ? 'O' : 'X';
 
-    // Synchronize all local state with sessionStorage to survive browser reloads
+    // Sync localStorage whenever difficulty or streaks change
+    useEffect(() => {
+        const s = Number(localStorage.getItem(`pve_streak_${difficulty}`) || 0);
+        const b = Number(localStorage.getItem(`pve_best_${difficulty}`) || 0);
+        setStreak(s);
+        setBestStreak(b);
+    }, [difficulty]);
+
+    // Synchronize all local state with sessionStorage
     useEffect(() => {
         sessionStorage.setItem('pve_board', JSON.stringify(board));
         sessionStorage.setItem('pve_currentTurn', currentTurn);
@@ -59,7 +79,58 @@ export function useGamePvE(humanPlayerSide: Player = 'X'): UseGamePvEReturn {
         sessionStorage.setItem('pve_difficulty', difficulty);
     }, [board, currentTurn, status, winner, winningLine, difficulty]);
 
-    // Core logic to process a move and check for win/draw immediately
+    // Use a ref to prevent double-processing of timeouts due to state batching
+    const isProcessingTimeout = useRef(false);
+
+    // Reset timeout guard when turn changes
+    useEffect(() => {
+        isProcessingTimeout.current = false;
+    }, [currentTurn]);
+
+    // Handle timeout penalty
+    const handleTimeout = useCallback(() => {
+        if (isProcessingTimeout.current || status !== 'PLAYING') return;
+        isProcessingTimeout.current = true;
+
+        setBoard((prevBoard) => {
+            const emptySpots = prevBoard.map((c, i) => c === null ? i : null).filter(v => v !== null) as number[];
+            if (emptySpots.length > 0) {
+                const randomIdx = emptySpots[Math.floor(Math.random() * emptySpots.length)];
+                const newBoard = [...prevBoard];
+                newBoard[randomIdx] = humanPlayerSide;
+                // Important: Manually switch turn here since we're in setBoard
+                setCurrentTurn(aiPlayerSide);
+                return newBoard;
+            }
+            return prevBoard;
+        });
+    }, [status, humanPlayerSide, aiPlayerSide]);
+
+    // Blitz Timer Countdown
+    useEffect(() => {
+        if (!isBlitzActive || status !== 'PLAYING' || currentTurn === aiPlayerSide || isAiThinking) {
+            return;
+        }
+
+        const timer = setInterval(() => {
+            setTimeLeft((prev) => {
+                if (prev <= 0.1) {
+                    clearInterval(timer);
+                    handleTimeout();
+                    return 0;
+                }
+                return prev - 0.1;
+            });
+        }, 100);
+
+        return () => clearInterval(timer);
+    }, [isBlitzActive, status, currentTurn, aiPlayerSide, isAiThinking, maxTime, handleTimeout]);
+
+    // Reset timer on turn change
+    useEffect(() => {
+        setTimeLeft(maxTime);
+    }, [currentTurn, maxTime]);
+
     const processMove = useCallback((index: number, player: Player) => {
         setBoard((prev) => {
             const newBoard = [...prev];
@@ -71,27 +142,67 @@ export function useGamePvE(humanPlayerSide: Player = 'X'): UseGamePvEReturn {
 
     // Effect to observe board changes and determine terminal states
     useEffect(() => {
+        // IMPORTANT: If we've already concluded the game, stop processing.
+        // This prevents the infinite loop when updating streaks.
+        if (status !== 'PLAYING') return;
+
         const { winner: currentWinner, line } = checkWinDetails(board);
+        
         if (currentWinner) {
             setWinner(currentWinner);
             setWinningLine(line);
             setStatus('WON');
+            
+            // Streak Logic
+            if (currentWinner === humanPlayerSide) {
+                setStreak(prev => {
+                    const newStreak = prev + 1;
+                    localStorage.setItem(`pve_streak_${difficulty}`, String(newStreak));
+                    setBestStreak(bPrev => {
+                        if (newStreak > bPrev) {
+                            localStorage.setItem(`pve_best_${difficulty}`, String(newStreak));
+                            return newStreak;
+                        }
+                        return bPrev;
+                    });
+                    return newStreak;
+                });
+            } else {
+                // LOSS: Reset streak
+                setStreak(0);
+                localStorage.setItem(`pve_streak_${difficulty}`, '0');
+            }
+
             if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
             return;
         }
         
         if (isBoardFull(board)) {
             setStatus('DRAW');
+            
+            // Deadlock Streak on Expert: A Draw counts as a success!
+            if (difficulty === 'EXPERT') {
+                setStreak(prev => {
+                    const newStreak = prev + 1;
+                    localStorage.setItem(`pve_streak_${difficulty}`, String(newStreak));
+                    setBestStreak(bPrev => {
+                        if (newStreak > bPrev) {
+                            localStorage.setItem(`pve_best_${difficulty}`, String(newStreak));
+                            return newStreak;
+                        }
+                        return bPrev;
+                    });
+                    return newStreak;
+                });
+            }
+
             if (navigator.vibrate) navigator.vibrate(50);
             return;
         }
 
-        // If it's the AI's turn, trigger the 'Thinking' process
+        // AI Turn
         if (currentTurn === aiPlayerSide && status === 'PLAYING') {
             setIsAiThinking(true);
-            
-            // Add a simulated delay (e.g. 500ms) so the AI doesn't feel "instant and robotic"
-            // It gives the user time to process their own move before the AI snaps back.
             const thinkTimer = setTimeout(() => {
                 const bestMoveIndex = getBestMove(board, aiPlayerSide, difficulty);
                 if (bestMoveIndex !== -1) {
@@ -102,10 +213,9 @@ export function useGamePvE(humanPlayerSide: Player = 'X'): UseGamePvEReturn {
 
             return () => clearTimeout(thinkTimer);
         }
-    }, [board, currentTurn, status, aiPlayerSide, difficulty, processMove]);
+    }, [board, currentTurn, status, aiPlayerSide, difficulty, humanPlayerSide, processMove]);
 
     const makeMove = (index: number) => {
-        // Prevent moves if game over, spot taken, or it's the AI's turn
         if (status !== 'PLAYING' || board[index] !== null || currentTurn === aiPlayerSide || isAiThinking) {
             return;
         }
@@ -119,6 +229,7 @@ export function useGamePvE(humanPlayerSide: Player = 'X'): UseGamePvEReturn {
         setWinner(null);
         setWinningLine(null);
         setIsAiThinking(false);
+        setTimeLeft(maxTime);
     };
 
     return {
@@ -131,6 +242,11 @@ export function useGamePvE(humanPlayerSide: Player = 'X'): UseGamePvEReturn {
         setDifficulty,
         makeMove,
         resetGame,
-        isAiThinking
+        isAiThinking,
+        streak,
+        bestStreak,
+        timeLeft,
+        maxTime,
+        isBlitzActive
     };
 }
